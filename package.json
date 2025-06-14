@@ -9,19 +9,31 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.3.3"
+    "@privy-io/react-auth": "^2.14.2",
+    "@react-spring/web": "^9.7.5",
+    "@reown/appkit": "^1.7.9",
+    "axios": "^1.9.0",
+    "clsx": "^2.1.1",
+    "date-fns-tz": "^3.2.0",
+    "framer-motion": "^11.18.2",
+    "next": "14.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-select": "^5.10.1",
+    "react-tinder-card": "^1.6.4",
+    "recharts": "^2.15.3",
+    "tailwind-merge": "^2.6.0",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.3",
-    "@eslint/eslintrc": "^3"
+    "@types/node": "^20.19.0",
+    "@types/react": "^18.2.52",
+    "@types/react-dom": "^18.2.18",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "14.1.0",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3"
   }
 }

@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VibeMatcher - Web3 Dating App
+
+VibeMatcher is a Web3-based dating app that matches users based on their token distribution and blockchain preferences.
+
+## Features
+
+- 🔐 Authentication with Privy (supports wallet, email, and Twitter login)
+- 💰 Token distribution-based matching algorithm
+- 💬 Real-time chat feature
+- 📊 Token distribution visualization with Recharts
+- 🎨 Responsive design and deep green theme
+- 🔄 Swipe matching interface
+
+## Tech Stack
+
+- Next.js 14 (App Router)
+- TypeScript
+- TailwindCSS
+- Privy
+- Recharts
+- Zustand
+- Framer Motion
+- React Tinder Card
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/vibematcher-fe.git
+cd vibematcher-fe
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env.local` file and add the following environment variables:
+
+```env
+NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id
+NEXT_PUBLIC_API_BASE_URL=http://43.207.147.137:3001
+```
+
+4. Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+/app
+  /chat        # Chat page
+  /discover    # Discover/match page
+  /profile     # Profile page
+/components    # Reusable components
+  /Navigation  # Navigation component
+  /PieChart    # Pie chart component
+  /SwipeCard   # Swipe card component
+/lib          # Utility functions and API calls
+/store        # Zustand state management
+/types        # TypeScript type definitions
+```
 
-## Learn More
+## API Integration
 
-To learn more about Next.js, take a look at the following resources:
+The app integrates with the following API endpoints:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- POST /api/users - Create a new user
+- GET /api/users/:wallet - Get user info
+- PATCH /api/users/:wallet/update - Update user info
+- PATCH /api/users/:wallet/update_tokens - Update user token distribution
+- GET /api/users/match - Get match percentage
+- GET /api/users - Get all users
+- POST /api/users/add_friend - Add friend
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Contributing
 
-## Deploy on Vercel
+Pull Requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](https://choosealicense.com/licenses/mit/)
