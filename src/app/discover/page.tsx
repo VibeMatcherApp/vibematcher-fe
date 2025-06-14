@@ -146,7 +146,7 @@ export default function DiscoverPage() {
   return (
     <div className="h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden">
       <div className="h-full flex items-center justify-center md:ml-0 md:transition-all md:duration-300 md:ease-in-out md:group-[.sidebar-open]:ml-64">
-        <div className="relative w-[95%] max-w-sm h-[500px] md:h-[600px]">
+        <div className="relative w-[95%] max-w-sm h-[600px]">
           {users.slice(currentIndex, currentIndex + 3).map((user, index) => (
             <div
               key={user.wallet_address}
@@ -186,4 +186,4 @@ export default function DiscoverPage() {
       )}
     </div>
   )
-} 
+}
