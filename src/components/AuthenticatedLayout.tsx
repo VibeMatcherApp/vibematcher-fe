@@ -13,15 +13,17 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
   if (!authenticated) {
     return (
-      <div className={`min-h-screen bg-gray-50 flex ${isSidebarOpen ? 'ml-64' : 'justify-center items-center'}`}>
-        {children}
+      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+        <div className="w-full">
+          {children}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`flex min-h-screen bg-gray-50 ${isSidebarOpen ? 'md:ml-64' : 'justify-center items-center'}`}>
-      <Sidebar onToggle={(isOpen) => setIsSidebarOpen(isOpen)} />
+    <div className={`flex min-h-screen bg-gray-50 ${isSidebarOpen ? 'md:ml-64' : ''}`}>
+      {authenticated && <Sidebar onToggle={(isOpen) => setIsSidebarOpen(isOpen)} />}
       <main className="flex-1 w-full transition-all duration-300 ease-in-out">
         <div className="h-full bg-gray-50">
           {children}
