@@ -30,10 +30,31 @@ export function Sidebar({ onToggle }: SidebarProps) {
   return (
     <>
       {/* 网页端侧边栏 */}
-      <div className={`hidden md:block fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 ${isVisible ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            <div className="flex items-center gap-2">
+      {isVisible && (
+        <div className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out translate-x-0">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleToggle(!isVisible)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  </svg>
+                </button>
+                <h1 className="text-xl font-bold text-gray-800">VibeMatcher</h1>
+              </div>
               <button
                 onClick={() => handleToggle(!isVisible)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -48,58 +69,39 @@ export function Sidebar({ onToggle }: SidebarProps) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
+                    d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold text-gray-800">VibeMatcher</h1>
             </div>
-            <button
-              onClick={() => handleToggle(!isVisible)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <svg
-                className="w-6 h-6 text-gray-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-          
-          <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`block px-4 py-2 rounded-lg transition-colors ${
-                  pathname === item.path
-                    ? 'bg-primary text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+            
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+              {menuItems.map((item) => (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`block px-4 py-2 rounded-lg transition-colors ${
+                    pathname === item.path
+                      ? 'bg-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
 
-          <div className="p-4 border-t border-gray-200">
-            <button
-              onClick={logout}
-              className="w-full px-4 py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-            >
-              Logout
-            </button>
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={logout}
+                className="w-full px-4 py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 网页端侧边栏切换按钮（当侧边栏隐藏时显示） */}
       {!isVisible && (
@@ -139,4 +141,4 @@ export function Sidebar({ onToggle }: SidebarProps) {
       </div>
     </>
   )
-} 
+}
