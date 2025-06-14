@@ -27,7 +27,7 @@ VibeMatcher is a Web3-based dating app that matches users based on their token d
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/vibematcher-fe.git
+git clone https://github.com/vibemathcer/vibematcher-fe.git
 cd vibematcher-fe
 ```
 

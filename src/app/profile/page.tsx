@@ -6,82 +6,35 @@ import { useRouter } from 'next/navigation'
 import { User } from '@/types'
 import { PieChart } from '@/components/PieChart'
 import Select from 'react-select'
+import { countries } from 'countries-list'
+import timezoneList from 'timezone-list'
 
-// 國家列表
-const countries = [
-  { value: 'TW', label: 'Taiwan' },
-  { value: 'US', label: 'United States' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'KR', label: 'South Korea' },
-  { value: 'SG', label: 'Singapore' },
-  { value: 'HK', label: 'Hong Kong' },
-  { value: 'CN', label: 'China' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'IT', label: 'Italy' },
-  { value: 'ES', label: 'Spain' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'NZ', label: 'New Zealand' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'BR', label: 'Brazil' },
-  { value: 'MX', label: 'Mexico' },
-  { value: 'IN', label: 'India' },
-  { value: 'ID', label: 'Indonesia' },
-  { value: 'MY', label: 'Malaysia' },
-  { value: 'TH', label: 'Thailand' },
-  { value: 'VN', label: 'Vietnam' },
-  { value: 'PH', label: 'Philippines' },
-  { value: 'RU', label: 'Russia' },
-  { value: 'ZA', label: 'South Africa' },
-  { value: 'AE', label: 'United Arab Emirates' },
-  { value: 'SA', label: 'Saudi Arabia' },
-  { value: 'TR', label: 'Turkey' },
-  { value: 'EG', label: 'Egypt' },
-  { value: 'IL', label: 'Israel' },
-]
+interface Timezone {
+  name: string;
+  offset: string;
+}
 
-// 時區列表
-const timezones = [
-  { value: 'Asia/Taipei', label: '(GMT+8) Taipei' },
-  { value: 'Asia/Tokyo', label: '(GMT+9) Tokyo' },
-  { value: 'Asia/Seoul', label: '(GMT+9) Seoul' },
-  { value: 'Asia/Singapore', label: '(GMT+8) Singapore' },
-  { value: 'Asia/Hong_Kong', label: '(GMT+8) Hong Kong' },
-  { value: 'Asia/Shanghai', label: '(GMT+8) Shanghai' },
-  { value: 'America/New_York', label: '(GMT-5) New York' },
-  { value: 'America/Los_Angeles', label: '(GMT-8) Los Angeles' },
-  { value: 'America/Chicago', label: '(GMT-6) Chicago' },
-  { value: 'Europe/London', label: '(GMT+0) London' },
-  { value: 'Europe/Paris', label: '(GMT+1) Paris' },
-  { value: 'Europe/Berlin', label: '(GMT+1) Berlin' },
-  { value: 'Europe/Rome', label: '(GMT+1) Rome' },
-  { value: 'Europe/Madrid', label: '(GMT+1) Madrid' },
-  { value: 'Australia/Sydney', label: '(GMT+10) Sydney' },
-  { value: 'Australia/Melbourne', label: '(GMT+10) Melbourne' },
-  { value: 'Pacific/Auckland', label: '(GMT+12) Auckland' },
-  { value: 'Asia/Kolkata', label: '(GMT+5:30) Mumbai' },
-  { value: 'Asia/Jakarta', label: '(GMT+7) Jakarta' },
-  { value: 'Asia/Kuala_Lumpur', label: '(GMT+8) Kuala Lumpur' },
-  { value: 'Asia/Bangkok', label: '(GMT+7) Bangkok' },
-  { value: 'Asia/Ho_Chi_Minh', label: '(GMT+7) Ho Chi Minh' },
-  { value: 'Asia/Manila', label: '(GMT+8) Manila' },
-  { value: 'Europe/Moscow', label: '(GMT+3) Moscow' },
-  { value: 'Africa/Johannesburg', label: '(GMT+2) Johannesburg' },
-  { value: 'Asia/Dubai', label: '(GMT+4) Dubai' },
-  { value: 'Asia/Riyadh', label: '(GMT+3) Riyadh' },
-  { value: 'Europe/Istanbul', label: '(GMT+3) Istanbul' },
-  { value: 'Africa/Cairo', label: '(GMT+2) Cairo' },
-  { value: 'Asia/Jerusalem', label: '(GMT+2) Jerusalem' },
-]
+// 使用套件生成的列表
+const countryOptions = Object.entries(countries).map(([code, country]) => ({
+  value: code,
+  label: country.name
+}))
 
-const genders = [
+const allTimezones = (timezoneList as any).timezones || (timezoneList as any).default?.timezones || [];
+
+const timezoneOptions = allTimezones.map((tz: Timezone) => ({
+  value: tz.name,
+  label: `${tz.name} (${tz.offset})`
+}))
+
+const genderOptions = [
   { value: 'Male', label: 'Male' },
   { value: 'Female', label: 'Female' },
   { value: 'Other', label: 'Other' },
 ]
 
-const ages = Array.from({ length: 83 }, (_, i) => ({
+// 生成年齡選項 (18-100)
+const ageOptions = Array.from({ length: 83 }, (_, i) => ({
   value: (i + 18).toString(),
   label: (i + 18).toString(),
 }))
@@ -244,9 +197,9 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   id="region"
-                  value={countries.find(country => country.value === formData.region)}
+                  value={countryOptions.find(country => country.value === formData.region)}
                   onChange={(option) => setFormData({ ...formData, region: option?.value || '' })}
-                  options={countries}
+                  options={countryOptions}
                   styles={customSelectStyles}
                   placeholder="Select Country"
                   isClearable
@@ -259,9 +212,9 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   id="age"
-                  value={ages.find(age => age.value === formData.age)}
+                  value={ageOptions.find(age => age.value === formData.age)}
                   onChange={(option) => setFormData({ ...formData, age: option?.value || '' })}
-                  options={ages}
+                  options={ageOptions}
                   styles={customSelectStyles}
                   placeholder="Select Age"
                   isClearable
@@ -274,9 +227,9 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   id="timezone"
-                  value={timezones.find(tz => tz.value === formData.timezone)}
+                  value={timezoneOptions.find(tz => tz.value === formData.timezone)}
                   onChange={(option) => setFormData({ ...formData, timezone: option?.value || '' })}
-                  options={timezones}
+                  options={timezoneOptions}
                   styles={customSelectStyles}
                   placeholder="Select Timezone"
                   isClearable
@@ -289,9 +242,9 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   id="gender"
-                  value={genders.find(gender => gender.value === formData.gender)}
+                  value={genderOptions.find(gender => gender.value === formData.gender)}
                   onChange={(option) => setFormData({ ...formData, gender: option?.value || '' })}
-                  options={genders}
+                  options={genderOptions}
                   styles={customSelectStyles}
                   placeholder="Select Gender"
                   isClearable
@@ -311,7 +264,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div>
                 <button
                   type="submit"
                   className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
@@ -335,7 +288,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-sm font-medium text-gray-500">Country</h2>
                 <p className="mt-1 text-sm text-gray-900">
-                  {countries.find(country => country.value === user?.region)?.label || 'Not set'}
+                  {countryOptions.find(country => country.value === user?.region)?.label || 'Not set'}
                 </p>
               </div>
 
@@ -347,7 +300,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-sm font-medium text-gray-500">Timezone</h2>
                 <p className="mt-1 text-sm text-gray-900">
-                  {timezones.find(tz => tz.value === user?.timezone)?.label || 'Not set'}
+                  {timezoneOptions.find(tz => tz.value === user?.timezone)?.label || 'Not set'}
                 </p>
               </div>
 
