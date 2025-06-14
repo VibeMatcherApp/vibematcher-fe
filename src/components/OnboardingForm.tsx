@@ -4,22 +4,19 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { countries } from 'countries-list'
-import timezoneList from 'timezone-list'
+import moment from 'moment-timezone'
+import Select from 'react-select'
 
-// 使用套件生成的列表
-const allTimezones = (timezoneList as any).timezones || (timezoneList as any).default?.timezones || [];
-
-const timezoneOptions = allTimezones.map(tz => ({
-  value: tz.name,
-  label: `${tz.name} (${tz.offset})`
-}))
-
-const countryList = Object.entries(countries).map(([code, country]) => ({
+const countryOptions = Object.entries(countries).map(([code, country]) => ({
   value: code,
   label: country.name
 }))
 
-// 生成年齡選項 (18-100)
+const timezoneOptions = moment.tz.names().map((tz: string) => ({
+    value: tz,
+    label: `${tz} (GMT${moment.tz(tz).format('Z')})`
+}))
+
 const ageOptions = Array.from({ length: 83 }, (_, i) => ({
   value: (i + 18).toString(),
   label: (i + 18).toString(),
@@ -75,18 +72,27 @@ const dealBreakerOptions = [
   { value: 'rudeness', label: 'Rudeness' }
 ]
 
-export function OnboardingForm() {
+interface OnboardingFormProps {
+  onSubmit: (data: any) => void;
+  availableInterests: { id: string; name: string }[];
+  availableVibes: { id: string; name: string }[];
+}
+
+const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSubmit, availableInterests, availableVibes }) => {
   const router = useRouter()
   const { user } = usePrivy()
   const [formData, setFormData] = useState({
-    nickname: '',
-    age: '',
-    gender: '',
-    region: '',
+    username: '',
+    gender: 'other',
+    looking_for: 'other',
+    birth_date: '',
+    country: '',
     timezone: '',
     interests: [] as string[],
+    vibes: [] as string[],
+    nickname: '',
+    age: '',
     bio: '',
-    lookingFor: [] as string[],
     relationshipGoal: '',
     dealBreakers: [] as string[],
     socialMedia: {
@@ -175,38 +181,26 @@ export function OnboardingForm() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Country</label>
-              <select
-                value={formData.region}
-                onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                required
-              >
-                <option value="">Select country</option>
-                {countryList.map((country) => (
-                  <option key={country.value} value={country.value}>
-                    {country.label}
-                  </option>
-                ))}
-              </select>
+            <div className="mb-4">
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700">Country</label>
+              <Select
+                id="country"
+                value={countryOptions.find(c => c.value === formData.country)}
+                onChange={(option) => setFormData({ ...formData, country: option?.value || '' })}
+                options={countryOptions}
+                className="mt-1"
+              />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Timezone</label>
-              <select
-                value={formData.timezone}
-                onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
-                required
-              >
-                <option value="">Select timezone</option>
-                {timezoneOptions.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
+            <div className="mb-4">
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">Timezone</label>
+              <Select
+                id="timezone"
+                value={timezoneOptions.find((tz: { value: string; label: string }) => tz.value === formData.timezone)}
+                onChange={(option) => setFormData({ ...formData, timezone: option?.value || '' })}
+                options={timezoneOptions}
+                className="mt-1"
+              />
             </div>
 
             <div>
@@ -250,13 +244,8 @@ export function OnboardingForm() {
                   <label key={option.value} className="inline-flex items-center">
                     <input
                       type="checkbox"
-                      checked={formData.lookingFor.includes(option.value)}
-                      onChange={(e) => {
-                        const newLookingFor = e.target.checked
-                          ? [...formData.lookingFor, option.value]
-                          : formData.lookingFor.filter(i => i !== option.value)
-                        setFormData({ ...formData, lookingFor: newLookingFor })
-                      }}
+                      checked={formData.looking_for === option.value}
+                      onChange={(e) => setFormData({ ...formData, looking_for: option.value })}
                       className="rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="ml-2 text-sm">{option.label}</span>
@@ -351,4 +340,6 @@ export function OnboardingForm() {
       </div>
     </div>
   )
-} 
+}
+
+export default OnboardingForm 

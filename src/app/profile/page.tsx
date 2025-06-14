@@ -7,24 +7,16 @@ import { User } from '@/types'
 import { PieChart } from '@/components/PieChart'
 import Select from 'react-select'
 import { countries } from 'countries-list'
-import timezoneList from 'timezone-list'
+import moment from 'moment-timezone'
 
-interface Timezone {
-  name: string;
-  offset: string;
-}
-
-// 使用套件生成的列表
 const countryOptions = Object.entries(countries).map(([code, country]) => ({
   value: code,
   label: country.name
 }))
 
-const allTimezones = (timezoneList as any).timezones || (timezoneList as any).default?.timezones || [];
-
-const timezoneOptions = allTimezones.map((tz: Timezone) => ({
-  value: tz.name,
-  label: `${tz.name} (${tz.offset})`
+const timezoneOptions = moment.tz.names().map((tz: string) => ({
+  value: tz,
+  label: `${tz} (GMT${moment.tz(tz).format('Z')})`
 }))
 
 const genderOptions = [
@@ -227,7 +219,7 @@ export default function ProfilePage() {
                 </label>
                 <Select
                   id="timezone"
-                  value={timezoneOptions.find(tz => tz.value === formData.timezone)}
+                  value={timezoneOptions.find((tz: { value: string; label: string }) => tz.value === formData.timezone)}
                   onChange={(option) => setFormData({ ...formData, timezone: option?.value || '' })}
                   options={timezoneOptions}
                   styles={customSelectStyles}
@@ -300,7 +292,7 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-sm font-medium text-gray-500">Timezone</h2>
                 <p className="mt-1 text-sm text-gray-900">
-                  {timezoneOptions.find(tz => tz.value === user?.timezone)?.label || 'Not set'}
+                  {timezoneOptions.find((tz: { value: string; label: string }) => tz.value === user?.timezone)?.label || 'Not set'}
                 </p>
               </div>
 
