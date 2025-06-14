@@ -55,24 +55,6 @@ export function Sidebar({ onToggle }: SidebarProps) {
                 </button>
                 <h1 className="text-xl font-bold text-gray-800">VibeMatcher</h1>
               </div>
-              <button
-                onClick={() => handleToggle(!isVisible)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
             </div>
             
             <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
@@ -103,13 +85,13 @@ export function Sidebar({ onToggle }: SidebarProps) {
         </div>
       )}
 
-      {/* 网页端侧边栏切换按钮（当侧边栏隐藏时显示） */}
+      {/* Sidebar toggle button when hidden */}
       {!isVisible && (
         <button
           onClick={() => handleToggle(true)}
-          className="hidden md:block fixed top-4 left-4 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-50 transition-colors z-50"
+          className="hidden md:block fixed top-4 left-4 p-2 bg-gray-200 rounded-lg shadow-lg hover:bg-gray-300 transition-colors z-50"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>

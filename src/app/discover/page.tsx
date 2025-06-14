@@ -41,31 +41,26 @@ export default function DiscoverPage() {
         const detailedUsers = await Promise.all(
           filteredUsers.map(async (user) => {
             try {
-              const detailedUser = await getUser(user.wallet_address)
-              console.log('Detailed user data:', detailedUser)
-              
-              // 確保 tags 字段的格式正確
+              const detailedUser = await getUser(user.wallet_address);
               const tags = {
-                blockchain: detailedUser.tags?.blockchain || '',
-                assetType: detailedUser.tags?.assetType || ''
-              }
+                blockchain: Array.isArray(detailedUser.tags?.blockchain) ? detailedUser.tags.blockchain : [detailedUser.tags?.blockchain || ''],
+                assetType: Array.isArray(detailedUser.tags?.assetType) ? detailedUser.tags.assetType : [detailedUser.tags?.assetType || '']
+              };
 
-              // 確保 tokenDistribution 的格式正確
-              const tokenDistribution = detailedUser.chain_data?.distribution || {}
-              console.log('Token distribution for user:', user.wallet_address, tokenDistribution)
-              
+              const tokenDistribution = detailedUser.chain_data?.distribution || {};
+
               return {
                 ...user,
                 tokenDistribution,
                 tags
-              }
+              } as User;
             } catch (error) {
-              console.error(`Error fetching details for user ${user.wallet_address}:`, error)
+              console.error(`Error fetching details for user ${user.wallet_address}:`, error);
               return {
                 ...user,
                 tokenDistribution: {},
-                tags: { blockchain: '', assetType: '' }
-              }
+                tags: { blockchain: [], assetType: [] }
+              } as User;
             }
           })
         )
