@@ -8,76 +8,51 @@ interface SwipeCardProps {
 }
 
 export const SwipeCard = ({ user, onSwipe }: SwipeCardProps) => {
-  // 確保 tokenDistribution 存在且是對象
-  const tokenDistribution = user.tokenDistribution || {}
-  console.log('Token Distribution:', tokenDistribution)
-  
-  const chartData = Object.entries(tokenDistribution).map(([name, value]) => ({
+  const chartData = user?.tokenDistribution ? Object.entries(user.tokenDistribution).map(([name, value]) => ({
     name,
-    value: Number(value) // 確保值是數字
-  }))
-  console.log('Chart Data:', chartData)
+    value: Number(value)
+  })) : []
 
-  // 確保 tags 存在且格式正確
-  const blockchainTags = Array.isArray(user.tags?.blockchain) ? user.tags.blockchain : []
-  const assetTypeTags = Array.isArray(user.tags?.assetType) ? user.tags.assetType : []
+  const { tags } = user
 
   return (
     <TinderCard
       onSwipe={onSwipe}
       preventSwipe={['up', 'down']}
-      className="absolute w-full max-w-sm md:max-w-xl lg:max-w-2xl bg-white rounded-xl shadow-lg p-6"
+      className="absolute w-full h-full bg-white rounded-xl shadow-lg"
       onSwipeRequirementFulfilled={() => {}}
       swipeThreshold={50}
     >
-      <div className="space-y-6">
-        <div className="flex items-center">
+      <div className="h-full overflow-y-auto p-6 space-y-4">
+        <div>
           <h3 className="text-xl font-semibold text-primary">{user.nickname || 'Anonymous'}</h3>
         </div>
-        
-        {chartData.length > 0 && (
-          <div className="w-full py-6">
-            <div className="aspect-square max-w-[300px] md:max-w-[400px] mx-auto">
-              <div className="pointer-events-none">
-                <PieChart data={chartData} />
-              </div>
+
+        {tags && (tags.blockchain || tags.assetType) && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Tags</h4>
+            <div className="flex flex-wrap gap-2">
+              {tags.blockchain && (
+                <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-1 rounded-full">
+                  {tags.blockchain}
+                </span>
+              )}
+              {tags.assetType && (
+                <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-1 rounded-full">
+                  {tags.assetType}
+                </span>
+              )}
             </div>
           </div>
         )}
-
-        <div className="space-y-4">
-          {blockchainTags.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Blockchain</h4>
-              <div className="flex flex-wrap gap-2">
-                {blockchainTags.map((tag) => (
-                  <span 
-                    key={tag} 
-                    className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
+        
+        {chartData.length > 0 && (
+          <div className="w-full">
+            <div className="aspect-square max-w-[300px] md:max-w-[400px] mx-auto pointer-events-none">
+              <PieChart data={chartData} />
             </div>
-          )}
-          
-          {assetTypeTags.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Asset Type</h4>
-              <div className="flex flex-wrap gap-2">
-                {assetTypeTags.map((tag) => (
-                  <span 
-                    key={tag} 
-                    className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {user.bio && (
           <div className="pt-2">

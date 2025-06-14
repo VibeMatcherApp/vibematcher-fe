@@ -46,12 +46,8 @@ export default function DiscoverPage() {
               
               // 確保 tags 字段的格式正確
               const tags = {
-                blockchain: Array.isArray(detailedUser.tags?.blockchain) 
-                  ? detailedUser.tags.blockchain 
-                  : [],
-                assetType: Array.isArray(detailedUser.tags?.assetType)
-                  ? detailedUser.tags.assetType
-                  : []
+                blockchain: detailedUser.tags?.blockchain || '',
+                assetType: detailedUser.tags?.assetType || ''
               }
 
               // 確保 tokenDistribution 的格式正確
@@ -68,7 +64,7 @@ export default function DiscoverPage() {
               return {
                 ...user,
                 tokenDistribution: {},
-                tags: { blockchain: [], assetType: [] }
+                tags: { blockchain: '', assetType: '' }
               }
             }
           })
@@ -154,7 +150,7 @@ export default function DiscoverPage() {
           {users.slice(currentIndex, currentIndex + 3).map((user, index) => (
             <div
               key={user.wallet_address}
-              className="absolute w-full"
+              className="absolute w-full h-full"
               style={{
                 zIndex: 3 - index,
                 transform: `translateY(${index * 20}px)`,

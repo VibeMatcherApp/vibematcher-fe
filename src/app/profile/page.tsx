@@ -8,6 +8,7 @@ import { PieChart } from '@/components/PieChart'
 import Select from 'react-select'
 import { countries } from 'countries-list'
 import moment from 'moment-timezone'
+import { getUser, updateUser } from '@/lib/api'
 
 const countryOptions = Object.entries(countries).map(([code, country]) => ({
   value: code,
@@ -81,9 +82,9 @@ export default function ProfilePage() {
     }
 
     const fetchUserData = async () => {
+      if (!currentUser?.wallet?.address) return
       try {
-        const response = await fetch(`/api/users/${currentUser?.wallet?.address}`)
-        const data = await response.json()
+        const data = await getUser(currentUser.wallet.address)
         setUser(data)
         setFormData({
           nickname: data.nickname || '',
@@ -108,26 +109,17 @@ export default function ProfilePage() {
     if (!currentUser?.wallet?.address) return
 
     try {
-      const response = await fetch(`/api/users/${currentUser.wallet.address}/update`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nickname: formData.nickname,
-          region: formData.region,
-          age: formData.age ? Number(formData.age) : undefined,
-          timezone: formData.timezone,
-          gender: formData.gender,
-          bio: formData.bio,
-        }),
-      })
-
-      if (response.ok) {
-        const updatedUser = await response.json()
-        setUser(updatedUser)
-        setIsEditing(false)
+      const updatedData = {
+        nickname: formData.nickname,
+        // region: formData.region,
+        // age: formData.age ? Number(formData.age) : undefined,
+        // timezone: formData.timezone,
+        // gender: formData.gender,
+        // bio: formData.bio,
       }
+      const updatedUser = await updateUser(currentUser.wallet.address, updatedData)
+      setUser(updatedUser)
+      setIsEditing(false)
     } catch (error) {
       console.error('Error updating user data:', error)
     }
@@ -149,9 +141,9 @@ export default function ProfilePage() {
     )
   }
 
-  const chartData = user?.tokenDistribution ? Object.entries(user.tokenDistribution).map(([name, value]) => ({
+  const chartData = user?.chain_data?.distribution ? Object.entries(user.chain_data.distribution).map(([name, value]) => ({
     name,
-    value,
+    value: Number(value),
   })) : []
 
   return (
@@ -256,7 +248,7 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div>
+              <div className="flex justify-end">
                 <button
                   type="submit"
                   className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
@@ -268,87 +260,63 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-6">
               <div>
-                <h2 className="text-sm font-medium text-gray-500">Wallet Address</h2>
-                <p className="mt-1 text-sm text-gray-900 break-all">{currentUser?.wallet?.address}</p>
+                <h3 className="font-medium text-gray-500">Nickname</h3>
+                <p className="text-gray-900">{user?.nickname || '-'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Wallet Address</h3>
+                <p className="text-gray-900 break-words">{user?.wallet_address}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Bio</h3>
+                <p className="text-gray-900">{user?.bio || '-'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Country</h3>
+                <p className="text-gray-900">{user?.region ? countries[user.region as keyof typeof countries]?.name : '-'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Age</h3>
+                <p className="text-gray-900">{user?.age || '-'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Timezone</h3>
+                <p className="text-gray-900">{user?.timezone || '-'}</p>
+              </div>
+              <div>
+                <h3 className="font-medium text-gray-500">Gender</h3>
+                <p className="text-gray-900">{user?.gender || '-'}</p>
               </div>
 
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Nickname</h2>
-                <p className="mt-1 text-sm text-gray-900">{user?.nickname || 'Not set'}</p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Country</h2>
-                <p className="mt-1 text-sm text-gray-900">
-                  {countryOptions.find(country => country.value === user?.region)?.label || 'Not set'}
-                </p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Age</h2>
-                <p className="mt-1 text-sm text-gray-900">{user?.age || 'Not set'}</p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Timezone</h2>
-                <p className="mt-1 text-sm text-gray-900">
-                  {timezoneOptions.find((tz: { value: string; label: string }) => tz.value === user?.timezone)?.label || 'Not set'}
-                </p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Gender</h2>
-                <p className="mt-1 text-sm text-gray-900">{user?.gender || 'Not set'}</p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Bio</h2>
-                <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{user?.bio || 'Not set'}</p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500 mb-4">Token Distribution</h2>
-                <div className="h-64">
-                  <PieChart data={chartData} />
+              {user?.tags && (user.tags.blockchain || user.tags.assetType) && (
+                <div>
+                  <h3 className="font-medium text-gray-500 mb-2">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {user.tags.blockchain && (
+                      <span className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">
+                        {user.tags.blockchain}
+                      </span>
+                    )}
+                    {user.tags.assetType && (
+                      <span className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">
+                        {user.tags.assetType}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Blockchain Tags</h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {user?.tags?.blockchain?.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {(!user?.tags?.blockchain || user.tags.blockchain.length === 0) && (
-                    <span className="text-sm text-gray-500">No tags set</span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-medium text-gray-500">Asset Type Tags</h2>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {user?.tags?.assetType?.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {(!user?.tags?.assetType || user.tags.assetType.length === 0) && (
-                    <span className="text-sm text-gray-500">No tags set</span>
-                  )}
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>
+
+        {chartData.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Token Distribution</h2>
+            <div style={{ height: '300px' }}>
+              <PieChart data={chartData} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
