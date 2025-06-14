@@ -26,8 +26,12 @@ export function PieChart({ data }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
-      <RechartsPieChart width={300} height={300} margin={{ top: 20, right: 20, bottom: 60, left: 20 }}>
+    <div className="w-full h-full flex flex-col items-center justify-center">
+      <RechartsPieChart
+        width={300}
+        height={300}
+        margin={{ top: 20, right: 0, bottom: 20, left: 0 }}
+      >
         <Pie
           data={data}
           cx="50%"
@@ -62,9 +66,13 @@ export function PieChart({ data }: PieChartProps) {
           wrapperStyle={{
             paddingTop: '20px',
             fontSize: '12px',
+            textAlign: 'center',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
           }}
         />
       </RechartsPieChart>
     </div>
   )
-} 
+}
