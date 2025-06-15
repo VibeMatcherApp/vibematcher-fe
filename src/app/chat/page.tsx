@@ -1,97 +1,91 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useAuthStore } from '@/store/auth'
+import { getUser } from '@/lib/api'
 
-interface Message {
-  id: number
-  text: string
-  sender: string
-  timestamp: Date
+interface MatchedUser {
+  id: string
+  avatarUrl: string
+  nickname: string
+  latestMessage: string
+  wallet_address: string // Added wallet_address property
+  chat_id: string // Added chat_id property
 }
 
-function ChatContent() {
+export default function ChatPage() {
   const { authenticated } = usePrivy()
   const router = useRouter()
   const { user } = useAuthStore()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
+  const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
+
+  useEffect(() => {
+    const fetchMatchedUsers = async () => {
+      if (!user?.wallet_address) {
+        console.log('No wallet address found for user:', user)
+        return
+      }
+
+      try {
+        const currentUser = await getUser(user.wallet_address)
+        console.log('Fetched user data:', currentUser)
+        console.log('Friends data:', currentUser.friends)
+
+        setMatchedUsers(
+          (currentUser.friends || []).map((friend) => ({
+            id: friend._id,
+            avatarUrl: friend.avatarUrl || '',
+            nickname: friend.nickname,
+            latestMessage: 'Start chatting now!',
+            wallet_address: friend.wallet_address, // Ensure wallet_address is mapped
+            chat_id: friend.chat_id, // Ensure chat_id is mapped
+          } as MatchedUser))
+        )
+      } catch (error) {
+        console.error('Error fetching matched users:', error)
+      }
+    }
+
+    fetchMatchedUsers()
+  }, [user])
 
   if (!authenticated || !user) {
     router.push('/')
     return null
   }
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim()) return
-
-    const message: Message = {
-      id: Date.now(),
-      text: newMessage,
-      sender: user.wallet,
-      timestamp: new Date(),
-    }
-
-    setMessages([...messages, message])
-    setNewMessage('')
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="h-[600px] flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${
-                    message.sender === user.wallet ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
-                      message.sender === user.wallet
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    <p className="text-sm">{message.text}</p>
-                    <p className="text-xs mt-1 opacity-70">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleSendMessage} className="border-t p-4">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 rounded-lg border-gray-300 focus:border-primary focus:ring-primary"
-                />
-                <button
-                  type="submit"
-                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Send
-                </button>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900">Your Matches</h1>
+        <div className="space-y-4">
+          {matchedUsers.map((matchedUser: MatchedUser) => (
+            <div
+              key={matchedUser.wallet_address}
+              className="flex items-center gap-4 p-4 bg-white rounded-lg shadow hover:bg-gray-100 cursor-pointer"
+              onClick={() => router.push(`/chat/${matchedUser.chat_id}`)}
+            >
+              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold">
+                {matchedUser.avatarUrl ? (
+                  <img
+                    src={matchedUser.avatarUrl}
+                    alt={matchedUser.nickname}
+                    className="w-full h-full rounded-full"
+                  />
+                ) : (
+                  matchedUser.nickname.charAt(0)
+                )}
               </div>
-            </form>
-          </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">{matchedUser.nickname}</h2>
+                <p className="text-sm text-gray-600">Start chatting now!</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
   )
 }
-
-export default function ChatPage() {
-  return <ChatContent />
-} 

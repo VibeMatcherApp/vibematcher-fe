@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useAuthStore } from '@/store/auth'
-import { SwipeCard } from '@/components/SwipeCard'
+import { MatchSuccess } from '@/components/MatchSuccess'
 import { getAllUsers, getMatchPercentage, addFriend, getUser } from '@/lib/api'
 import { User } from '@/types'
+import TinderCard from 'react-tinder-card'
+import { PieChart } from '@/components/PieChart'
 
 export default function DiscoverPage() {
   const { authenticated } = usePrivy()
@@ -18,9 +20,17 @@ export default function DiscoverPage() {
   const [matchResult, setMatchResult] = useState<{ percentage: number; user: User } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastDirection, setLastDirection] = useState<string | undefined>()
+
+  const currentIndexRef = useRef(currentIndex)
+
+  const childRefs = useMemo(
+    () => Array(users.length).fill(0).map(() => React.createRef<any>()),
+    [users.length]
+  )
 
   useEffect(() => {
-    if (!authenticated) {
+    if (!authenticated || !currentUser) {
       router.push('/')
       return
     }
@@ -30,42 +40,43 @@ export default function DiscoverPage() {
         setIsLoading(true)
         setError(null)
         
-        // 獲取基本用戶列表
         const basicUsers = await getAllUsers()
-        console.log('Basic users:', basicUsers)
-        
-        // 過濾掉當前用戶
-        const filteredUsers = basicUsers.filter(u => u.wallet_address !== currentUser?.wallet_address)
-        
-        // 獲取每個用戶的完整數據
+        const filteredUsers = basicUsers.filter(
+          (u) => u.wallet_address !== currentUser?.wallet_address // Exclude current user
+        )
+
         const detailedUsers = await Promise.all(
           filteredUsers.map(async (user) => {
             try {
-              const detailedUser = await getUser(user.wallet_address);
+              const detailedUser = await getUser(user.wallet_address)
               const tags = {
-                blockchain: Array.isArray(detailedUser.tags?.blockchain) ? detailedUser.tags.blockchain : [detailedUser.tags?.blockchain || ''],
-                assetType: Array.isArray(detailedUser.tags?.assetType) ? detailedUser.tags.assetType : [detailedUser.tags?.assetType || '']
-              };
-
-              const tokenDistribution = detailedUser.chain_data?.distribution || {};
+                blockchain: Array.isArray(detailedUser.tags?.blockchain)
+                  ? detailedUser.tags.blockchain
+                  : [detailedUser.tags?.blockchain || ''],
+                assetType: Array.isArray(detailedUser.tags?.assetType)
+                  ? detailedUser.tags.assetType
+                  : [detailedUser.tags?.assetType || ''],
+              }
 
               return {
                 ...user,
-                tokenDistribution,
-                tags
-              } as User;
+                tokenDistribution: detailedUser.chain_data?.distribution || {},
+                tags,
+              }
             } catch (error) {
-              console.error(`Error fetching details for user ${user.wallet_address}:`, error);
+              console.error(
+                `Error fetching details for user ${user.wallet_address}:`,
+                error
+              )
               return {
                 ...user,
                 tokenDistribution: {},
-                tags: { blockchain: [], assetType: [] }
-              } as User;
+                tags: { blockchain: [], assetType: [] },
+              }
             }
           })
         )
-        
-        console.log('Final users data:', detailedUsers)
+
         setUsers(detailedUsers)
       } catch (error) {
         console.error('Error fetching users:', error)
@@ -76,32 +87,62 @@ export default function DiscoverPage() {
     }
 
     fetchUsers()
-  }, [authenticated, router, currentUser])
+  }, [authenticated, currentUser, router])
 
-  const handleSwipe = async (direction: string) => {
-    if (direction === 'right' && currentUser && users[currentIndex]) {
+  const updateCurrentIndex = (val: number) => {
+    setCurrentIndex(val)
+    currentIndexRef.current = val
+  }
+
+  const canGoBack = currentIndex < users.length - 1
+  const canSwipe = currentIndex >= 0
+
+  const swiped = async (direction: string, nameToDelete: string, index: number) => {
+    setLastDirection(direction)
+    if (direction === 'right' && currentUser && users[index]) {
+      console.log('liked')
       try {
-        const result = await getMatchPercentage(currentUser.wallet_address, users[currentIndex].wallet_address)
+        const result = await getMatchPercentage(currentUser.wallet_address, users[index].wallet_address)
         if (result.match_percentage > 70) {
-          await addFriend(currentUser.wallet_address, users[currentIndex].wallet_address)
+          await addFriend(currentUser.wallet_address, users[index].wallet_address)
           setMatchResult({
             percentage: result.match_percentage,
-            user: users[currentIndex],
+            user: users[index],
           })
           setShowMatchModal(true)
+          setTimeout(() => router.push('/chat'), 2500) // Redirect after 2.5 seconds
         }
       } catch (error) {
         console.error('Error checking match:', error)
-        // Don't show error to user for match checking
       }
+    } else if (direction === 'left') {
+      console.log('not interested')
     }
-    setCurrentIndex(prev => prev + 1)
+    updateCurrentIndex(index - 1)
+  }
+
+  const outOfFrame = (name: string, idx: number) => {
+    console.log(`${name} (${idx}) left the screen!`, currentIndexRef.current)
+    currentIndexRef.current >= idx && childRefs[idx].current.restoreCard()
+  }
+
+  const swipe = async (dir: 'left' | 'right') => {
+    if (canSwipe && currentIndex < users.length) {
+      await childRefs[currentIndex].current.swipe(dir)
+    }
+  }
+
+  const goBack = async () => {
+    if (!canGoBack) return
+    const newIndex = currentIndex + 1
+    updateCurrentIndex(newIndex)
+    await childRefs[newIndex].current.restoreCard()
   }
 
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Please log in to continue</p>
+        <p className="text-gray-600 text-lg">Please log in to continue</p>
       </div>
     )
   }
@@ -109,23 +150,7 @@ export default function DiscoverPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Loading users...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+        <p className="text-gray-600 text-lg">Loading users...</p>
       </div>
     )
   }
@@ -133,7 +158,7 @@ export default function DiscoverPage() {
   if (users.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">No more users to discover</p>
+        <p className="text-gray-600 text-lg">No more users!</p>
       </div>
     )
   }
@@ -142,42 +167,84 @@ export default function DiscoverPage() {
     <div className="h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden">
       <div className="h-full flex items-center justify-center">
         <div className="relative w-[95%] max-w-sm h-[600px]">
-          {users.slice(currentIndex, currentIndex + 3).map((user, index) => (
-            <div
-              key={user.wallet_address}
+          {users.map((user, index) => (
+            <TinderCard
+              ref={childRefs[index]}
               className="absolute w-full h-full"
-              style={{
-                zIndex: 3 - index,
-                transform: `translateY(${index * 20}px)`,
-              }}
+              key={user.wallet_address}
+              onSwipe={(dir) => swiped(dir, user.nickname || 'Anonymous', index)}
+              onCardLeftScreen={() => outOfFrame(user.nickname || 'Anonymous', index)}
             >
-              <SwipeCard user={user} onSwipe={handleSwipe} />
-            </div>
+              <div className="h-full overflow-y-auto p-6 space-y-4 bg-white rounded-xl shadow-lg">
+                <h3 className="text-xl font-semibold text-primary">{user.nickname || 'Anonymous'}</h3>
+                {user.tags && (user.tags.blockchain || user.tags.assetType) && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Tags</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {user.tags.blockchain && (
+                        <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {user.tags.blockchain}
+                        </span>
+                      )}
+                      {user.tags.assetType && (
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {user.tags.assetType}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {user.tokenDistribution && (
+                  <div className="w-full">
+                    <div className="aspect-square max-w-[300px] mx-auto pointer-events-none">
+                      <PieChart data={Object.entries(user.tokenDistribution).map(([name, value]) => ({ name, value: Number(value) }))} />
+                    </div>
+                  </div>
+                )}
+                {user.bio && (
+                  <div className="pt-2">
+                    <p className="text-gray-600 text-sm leading-relaxed">{user.bio}</p>
+                  </div>
+                )}
+              </div>
+            </TinderCard>
           ))}
         </div>
       </div>
 
+      <div className="flex justify-center mt-4 space-x-4">
+        <button
+          onClick={() => swipe('left')}
+          className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+        >
+          Swipe Left
+        </button>
+        <button
+          onClick={goBack}
+          className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+        >
+          Undo Swipe
+        </button>
+        <button
+          onClick={() => swipe('right')}
+          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+        >
+          Swipe Right
+        </button>
+      </div>
+
+      {lastDirection ? (
+        <h2 className="text-center mt-4">You swiped {lastDirection}</h2>
+      ) : (
+        <h2 className="text-center mt-4">Swipe a card or press a button!</h2>
+      )}
+
       {showMatchModal && matchResult && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-xl max-w-md w-full">
-            <h2 className="text-2xl font-bold text-primary mb-4">It's a Match! 🎉</h2>
-            <p className="text-gray-600 mb-4">
-              You matched with {matchResult.user.nickname || 'Anonymous'}!
-            </p>
-            <p className="text-primary font-semibold mb-6">
-              Match Percentage: {matchResult.percentage}%
-            </p>
-            <button
-              onClick={() => {
-                setShowMatchModal(false)
-                router.push('/chat')
-              }}
-              className="w-full bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Start Chatting
-            </button>
-          </div>
-        </div>
+        <MatchSuccess
+          matchedWallet={matchResult.user.wallet_address}
+          username={matchResult.user.nickname || 'Anonymous'}
+          avatarUrl={matchResult.user.avatarUrl || '/default-avatar.png'}
+        />
       )}
     </div>
   )

@@ -1,3 +1,13 @@
+export interface MatchedUser {
+  wallet_address: string; // Ensure compatibility with API response
+  nickname: string;
+  chat_id: string; // Ensure compatibility with API response
+  id: string; // Ensure compatibility with API response
+  avatarUrl?: string; // Make avatarUrl optional
+  latestMessage?: string; // Ensure compatibility with API response
+  _id?: string; // Add _id property for compatibility
+}
+
 export interface User {
   wallet_address: string
   nickname?: string
@@ -18,10 +28,12 @@ export interface User {
       [key: string]: number
     }
   }
+  avatarUrl?: string // Add avatarUrl property to User type
+  friends?: MatchedUser[]; // Ensure compatibility with API response
 }
 
 export interface MatchResult {
   match_percentage: number
   user1: User
   user2: User
-} 
+}
