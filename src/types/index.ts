@@ -30,10 +30,9 @@ export interface User {
   }
   avatarUrl?: string // Add avatarUrl property to User type
   friends?: MatchedUser[]; // Ensure compatibility with API response
+  matchPercentage?: number;
 }
 
 export interface MatchResult {
-  match_percentage: number
-  user1: User
-  user2: User
+  match_percentage: string;
 }

@@ -12,9 +12,10 @@ const COLORS = [
 
 interface PieChartProps {
   data: { name: string; value: number }[]
+  matchPercentage?: number
 }
 
-export function PieChart({ data }: PieChartProps) {
+export function PieChart({ data, matchPercentage }: PieChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -26,7 +27,7 @@ export function PieChart({ data }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center">
+    <div className="relative w-full h-full flex flex-col items-center justify-center">
       <RechartsPieChart
         width={300}
         height={300}
@@ -73,6 +74,12 @@ export function PieChart({ data }: PieChartProps) {
           }}
         />
       </RechartsPieChart>
+      {matchPercentage !== undefined && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-gray-500 text-sm">Match</span>
+          <span className="text-primary font-bold text-4xl">{matchPercentage}%</span>
+        </div>
+      )}
     </div>
   )
 }
