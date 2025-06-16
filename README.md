@@ -41,7 +41,7 @@ npm install
 
 ```env
 NEXT_PUBLIC_PRIVY_APP_ID=your-privy-app-id
-NEXT_PUBLIC_API_BASE_URL=http://43.207.147.137:3001
+NEXT_PUBLIC_API_BASE_URL=your-api-base-url
 ```
 
 4. Run the development server:
