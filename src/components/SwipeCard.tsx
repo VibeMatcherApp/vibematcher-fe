@@ -45,13 +45,8 @@ export const SwipeCard = ({ user, onSwipe }: SwipeCardProps) => {
         swipeThreshold={20} // Further reduced threshold for quicker swiping
       >
         <div className="h-full overflow-y-auto p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div>
             <h3 className="text-xl font-semibold text-primary">{user.nickname || 'Anonymous'}</h3>
-            {user.matchPercentage !== undefined && (
-              <span className="ml-2 text-base font-medium text-purple-600 bg-purple-100 px-3 py-1 rounded-full">
-                Match Percentage: {user.matchPercentage}%
-              </span>
-            )}
           </div>
 
           {tags && (tags.blockchain || tags.assetType) && (

@@ -9,11 +9,12 @@ export interface MatchedUser {
 }
 
 export interface User {
-  wallet_address: string
-  nickname?: string
-  region?: string
+  wallet?: string
+  wallet_address?: string
+  nickname: string
+  region: string
+  timezone: string
   age?: number
-  timezone?: string
   gender?: string
   bio?: string
   tags: {

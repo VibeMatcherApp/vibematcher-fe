@@ -36,19 +36,26 @@ export default function DiscoverPage() {
     }
 
     const fetchUsers = async () => {
+      const currentUserWallet = currentUser.wallet || currentUser.wallet_address;
+      if (!currentUserWallet) {
+        setError("Could not find user's wallet address.");
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true)
         setError(null)
         
         const basicUsers = await getAllUsers()
         const filteredUsers = basicUsers.filter(
-          (u) => u.wallet_address !== currentUser?.wallet_address // Exclude current user
+          (u) => u.wallet_address && u.wallet_address !== currentUserWallet
         )
 
         const detailedUsers = await Promise.all(
           filteredUsers.map(async (user) => {
             try {
-              const detailedUser = await getUser(user.wallet_address)
+              const detailedUser = await getUser(user.wallet_address!);
               const tags = {
                 blockchain: Array.isArray(detailedUser.tags?.blockchain)
                   ? detailedUser.tags.blockchain
@@ -65,29 +72,24 @@ export default function DiscoverPage() {
               }
             } catch (error) {
               console.error(
-                `Error fetching details for user ${user.wallet_address}:`,
+                `Error fetching details for user ${user.wallet_address!}:`,
                 error
               )
-              return {
-                ...user,
-                tokenDistribution: {},
-                tags: { blockchain: [], assetType: [] },
-              }
+              return user; 
             }
           })
         )
 
         const usersWithMatchPercentage = await Promise.all(
           detailedUsers.map(async (user) => {
-            if (!currentUser?.wallet_address) return user;
             try {
-              const result = await getMatchPercentage(user.wallet_address, currentUser.wallet_address);
+              const result = await getMatchPercentage(user.wallet_address!, currentUserWallet);
               return {
                 ...user,
                 matchPercentage: Math.round(Number(result.match_percentage)),
               };
             } catch (error) {
-              console.error(`Error fetching match percentage for ${user.wallet_address}:`, error);
+              console.error(`Error fetching match percentage for ${user.wallet_address!}:`, error);
               return {
                 ...user,
                 matchPercentage: 0,
@@ -121,15 +123,18 @@ export default function DiscoverPage() {
 
   const swiped = async (direction: string, nameToDelete: string, index: number) => {
     setLastDirection(direction)
-    if (direction === 'right' && currentUser?.wallet_address && users[index]) {
+    const currentUserWallet = currentUser?.wallet || currentUser?.wallet_address
+    const user = users[index]
+
+    if (direction === 'right' && currentUserWallet && user?.wallet_address) {
       console.log('liked')
       try {
-        const result = await getMatchPercentage(users[index].wallet_address, currentUser.wallet_address)
+        const result = await getMatchPercentage(user.wallet_address, currentUserWallet)
         if (Number(result.match_percentage) > 70) {
-          await addFriend(currentUser.wallet_address, users[index].wallet_address)
+          await addFriend(currentUserWallet, user.wallet_address)
           setMatchResult({
             percentage: Number(result.match_percentage),
-            user: users[index],
+            user: user,
           })
           setShowMatchModal(true)
           setTimeout(() => router.push('/chat'), 2500) // Redirect after 2.5 seconds
@@ -218,8 +223,8 @@ export default function DiscoverPage() {
                 )}
                 {user.tokenDistribution && (
                   <div className="w-full">
-                    <div className="aspect-square max-w-[300px] mx-auto">
-                      <PieChart
+                    <div className="aspect-square max-w-[300px] mx-auto pointer-events-none">
+                      <PieChart 
                         data={Object.entries(user.tokenDistribution).map(([name, value]) => ({ name, value: Number(value) }))}
                         matchPercentage={user.matchPercentage}
                       />
@@ -231,10 +236,10 @@ export default function DiscoverPage() {
                         className="flex items-center justify-center gap-2 h-12 px-6 bg-gray-100 text-gray-600 font-semibold rounded-full shadow-sm hover:bg-gray-200 transition-all duration-200 ease-in-out transform hover:-translate-y-px"
                         aria-label="Unlike"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        <span>Unlike</span>
+                        <span className="pointer-events-none">Unlike</span>
                       </button>
                       <button
                         onMouseDown={(e) => e.stopPropagation()}
@@ -242,10 +247,10 @@ export default function DiscoverPage() {
                         className="flex items-center justify-center gap-2 h-12 px-6 bg-primary text-white font-semibold rounded-full shadow-md hover:bg-primary/90 transition-all duration-200 ease-in-out transform hover:-translate-y-px"
                         aria-label="Like"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 pointer-events-none" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" />
                         </svg>
-                        <span>Like</span>
+                        <span className="pointer-events-none">Like</span>
                       </button>
                     </div>
                   </div>
@@ -270,7 +275,7 @@ export default function DiscoverPage() {
         </button>
       </div>
 
-      {showMatchModal && matchResult && (
+      {showMatchModal && matchResult?.user.wallet_address && (
         <MatchSuccess
           matchedWallet={matchResult.user.wallet_address}
           username={matchResult.user.nickname || 'Anonymous'}

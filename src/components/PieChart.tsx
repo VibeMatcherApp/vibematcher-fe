@@ -1,4 +1,4 @@
-import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
+import { PieChart as RechartsPieChart, Pie, Cell, Tooltip } from 'recharts'
 
 const COLORS = [
   '#679186', // greenish
@@ -27,59 +27,51 @@ export function PieChart({ data, matchPercentage }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center">
-      <RechartsPieChart
-        width={300}
-        height={300}
-        margin={{ top: 20, right: 0, bottom: 20, left: 0 }}
-      >
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={80}
-          dataKey="value"
-          label={false}
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value: number, name: string) => [`${((value as number / total) * 100).toFixed(1)}%`, name]}
-          contentStyle={{
-            backgroundColor: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            padding: '8px 12px',
-          }}
-        />
-        <Legend
-          layout="horizontal"
-          verticalAlign="bottom"
-          align="center"
-          formatter={(value, entry, index) => {
-            const percentage = ((data[index].value / total) * 100).toFixed(1)
-            return `${value} (${percentage}%)`
-          }}
-          wrapperStyle={{
-            paddingTop: '20px',
-            fontSize: '12px',
-            textAlign: 'center',
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-          }}
-        />
-      </RechartsPieChart>
-      {matchPercentage !== undefined && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-gray-500 text-sm">Match</span>
-          <span className="text-primary font-bold text-4xl">{matchPercentage}%</span>
-        </div>
-      )}
+    <div className="w-full h-full flex flex-col items-center justify-center">
+      <div className="relative w-[300px] h-[240px]">
+        <RechartsPieChart width={300} height={240}>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={80}
+            dataKey="value"
+            label={false}
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value: number) => [`${((value / total) * 100).toFixed(1)}%`, '']}
+            contentStyle={{
+              backgroundColor: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              padding: '8px 12px',
+            }}
+          />
+        </RechartsPieChart>
+        {matchPercentage !== undefined && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-sm text-gray-500">Match</span>
+            <span className="text-3xl font-bold text-primary">{matchPercentage}%</span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-wrap justify-center items-center text-xs text-center w-full text-gray-700" style={{ paddingTop: '20px' }}>
+        {data.map((entry, index) => (
+          <div key={`legend-${index}`} className="flex items-center" style={{ marginRight: '10px', marginBottom: '4px' }}>
+            <span
+              className="w-3 h-3 mr-1.5 inline-block"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            />
+            <span>{`${entry.name} (${((entry.value / total) * 100).toFixed(1)}%)`}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
