@@ -8,6 +8,7 @@ import { usePrivy } from '@privy-io/react-auth'
 const menuItems = [
   { name: 'Discover', path: '/discover' },
   { name: 'Chat', path: '/chat' },
+  { name: 'Quiz', path: '/quiz' },
   { name: 'Profile', path: '/profile' },
 ]
 
