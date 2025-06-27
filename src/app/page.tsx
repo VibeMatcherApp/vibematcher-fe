@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useAuthStore } from '@/store/auth'
 import { privyUserToLocalUser } from '@/lib/utils'
+import { updateUserTokens, getUser } from '@/lib/api'
 
 export default function Home() {
   const { ready, authenticated, user, login } = usePrivy()
@@ -26,6 +27,22 @@ export default function Home() {
     }
     initializeUser()
   }, [authenticated, user, setUser, setIsAuthenticated])
+
+  useEffect(() => {
+    async function updateTokensOnLogin() {
+      if (authenticated && user?.wallet?.address) {
+        try {
+          const userDetails = await getUser(user.wallet.address)
+          if (userDetails?.tokenDistribution) {
+            await updateUserTokens(user.wallet.address, userDetails.tokenDistribution)
+          }
+        } catch (err) {
+          console.error('Failed to update user tokens on login', err)
+        }
+      }
+    }
+    updateTokensOnLogin()
+  }, [authenticated, user?.wallet?.address])
 
   if (ready && authenticated) return null
 
