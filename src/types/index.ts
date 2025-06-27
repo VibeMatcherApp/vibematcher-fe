@@ -8,6 +8,21 @@ export interface MatchedUser {
   _id?: string; // Add _id property for compatibility
 }
 
+export interface UserProfile {
+  age?: number;
+  gender?: string;
+  region?: string;
+  avatar?: string;
+  bio?: string;
+  languages?: string[];
+  timezone?: string;
+}
+
+export interface UserSocialLinks {
+  x_profile?: string;
+  telegram_profile?: string;
+}
+
 export interface User {
   wallet?: string
   wallet_address?: string
@@ -32,6 +47,9 @@ export interface User {
   avatarUrl?: string // Add avatarUrl property to User type
   friends?: MatchedUser[]; // Ensure compatibility with API response
   matchPercentage?: number;
+  // 新增
+  profile?: UserProfile;
+  social_links?: UserSocialLinks;
 }
 
 export interface MatchResult {
