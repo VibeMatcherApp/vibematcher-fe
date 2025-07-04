@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuthStore } from "@/store/auth";
 import { useSepoliaProvider, useWalletProvider } from "@/app/providers";
+import { SAMPLE_QUESTIONS, Question } from "@/mockdata";
 import {
   getRizzTokenContract,
   getMultiplierContract,
@@ -23,14 +24,6 @@ import {
   vibeGame_games,
 } from "@/utils/contracts";
 
-interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  category: string;
-}
-
 interface GameState {
   currentQuestion: number;
   score: number;
@@ -44,101 +37,11 @@ interface GameState {
   results: { correct: boolean; earned: number; lost: number }[];
 }
 
-const SAMPLE_QUESTIONS: Question[] = [
-  {
-    id: 1,
-    question: "What is the main characteristic of blockchain?",
-    options: ["Centralized", "Decentralized", "Private", "Commercial"],
-    correctAnswer: 1,
-    category: "Blockchain Basics",
-  },
-  {
-    id: 2,
-    question: "Who is the creator of Bitcoin?",
-    options: [
-      "Vitalik Buterin",
-      "Satoshi Nakamoto",
-      "Charlie Lee",
-      "Roger Ver",
-    ],
-    correctAnswer: 1,
-    category: "Cryptocurrency",
-  },
-  {
-    id: 3,
-    question: "What is Ethereum's native token?",
-    options: ["BTC", "ETH", "LTC", "XRP"],
-    correctAnswer: 1,
-    category: "Ethereum",
-  },
-  {
-    id: 4,
-    question: "What is a smart contract?",
-    options: [
-      "Paper contract",
-      "Self-executing code",
-      "Legal document",
-      "Bank agreement",
-    ],
-    correctAnswer: 1,
-    category: "Smart Contracts",
-  },
-  {
-    id: 5,
-    question: "What does NFT stand for?",
-    options: [
-      "New Financial Token",
-      "Non-Fungible Token",
-      "Network File Transfer",
-      "Next Future Technology",
-    ],
-    correctAnswer: 1,
-    category: "NFT",
-  },
-  {
-    id: 6,
-    question: "What is DeFi?",
-    options: [
-      "Decentralized Finance",
-      "Digital Finance",
-      "Direct Finance",
-      "Distributed Finance",
-    ],
-    correctAnswer: 0,
-    category: "DeFi",
-  },
-  {
-    id: 7,
-    question: "What consensus mechanism does Bitcoin use?",
-    options: [
-      "Proof of Stake",
-      "Proof of Work",
-      "Delegated Proof of Stake",
-      "Proof of Authority",
-    ],
-    correctAnswer: 1,
-    category: "Consensus",
-  },
-  {
-    id: 8,
-    question: "What is a cryptocurrency wallet?",
-    options: [
-      "Physical wallet",
-      "Digital storage for crypto",
-      "Bank account",
-      "Credit card",
-    ],
-    correctAnswer: 1,
-    category: "Wallets",
-  },
-];
-
 export default function QuizPage() {
   const { authenticated } = usePrivy();
   const router = useRouter();
   const { user } = useAuthStore();
   const walletProvider = useWalletProvider();
-  const ethersProvider = useSepoliaProvider;
   const [gameState, setGameState] = useState<GameState>({
     currentQuestion: 0,
     score: 0,
@@ -168,11 +71,16 @@ export default function QuizPage() {
     
     // Fetch real balance when user is authenticated
     fetchRizzBalance();
-  }, [authenticated, user, router, ethersProvider]);
+    // handleBalanceOf();
+  }, [authenticated, user, router, walletProvider]);
+
+  useEffect(() => {
+    console.log(realRizzBalance)
+  }, [realRizzBalance])
 
   // Fetch real RIZZ balance from smart contract
   const fetchRizzBalance = async () => {
-    if (!ethersProvider || !user?.wallet) return;
+    if (!walletProvider || !user?.wallet) return;
     
     try {
       const provider = await walletProvider;
@@ -183,8 +91,8 @@ export default function QuizPage() {
       const decimals = await contract.decimals();
       setRizzDecimals(decimals);
       
-      // Convert balance to human readable format
-      const formattedBalance = (Number(balance) / Math.pow(10, decimals)).toFixed(2);
+      // Convert balance to show multiplied by 10^9
+      const formattedBalance = (Number(balance/BigInt(1000000000)).toString());
       setRealRizzBalance(formattedBalance);
     } catch (e) {
       console.error("Error fetching RIZZ balance:", e);
@@ -197,78 +105,204 @@ export default function QuizPage() {
     return multipliers[Math.floor(Math.random() * multipliers.length)];
   };
 
-  // Start game
-  const startGame = () => {
-    const stakeAmount = parseInt(stakeInput);
-    if (stakeAmount <= 0 || stakeAmount > gameState.rizzBalance) {
-      alert("Invalid stake amount!");
-      return;
+  // Start game with smart contract
+  const startGameWithContract = async () => {
+    if (!walletProvider || !user?.wallet) {
+      alert('Provider or user address not available')
+      return
     }
 
-    const multiplier = generateRandomMultiplier();
-    // Randomly select one question from SAMPLE_QUESTIONS
-    const randomIndex = Math.floor(Math.random() * SAMPLE_QUESTIONS.length);
-    const randomQuestion = SAMPLE_QUESTIONS[randomIndex];
-    setGameState((prev) => ({
-      ...prev,
-      gameStarted: true,
-      stakedAmount: stakeAmount,
-      multiplier,
-      rizzBalance: prev.rizzBalance - stakeAmount,
-      currentQuestion: 0,
-      userAnswers: [],
-      results: [],
-      questions: [randomQuestion], // Only one question for this game
-    }));
-  };
-
-  // Submit answer
-  const submitAnswer = () => {
-    if (selectedAnswer === null) return;
-
-    setIsAnswering(true);
-    const currentQ = gameState.questions[gameState.currentQuestion];
-    const isCorrect = selectedAnswer === currentQ.correctAnswer;
-
-    let earned = 0;
-    let lost = 0;
-
-    if (isCorrect) {
-      earned = Math.floor(gameState.stakedAmount * gameState.multiplier);
-    } else {
-      lost = gameState.stakedAmount;
+    const stakeAmount = parseInt(stakeInput)
+    if (stakeAmount <= 0) {
+      alert('Invalid stake amount!')
+      return
     }
 
-    const newResult = { correct: isCorrect, earned, lost };
+    try {
+      const provider = await walletProvider
+      if (!provider) {
+        alert('Provider not available')
+        return
+      }
 
-    setTimeout(() => {
-      setGameState((prev) => ({
+      const signer = await provider.getSigner()
+      const rizzContract = getRizzTokenContract(signer)
+      const gameContract = getVibeGameContract(signer)
+
+      // Convert stake amount to wei (using 9 decimals)
+      const stakeInWei = BigInt(stakeAmount) * BigInt(10 ** 9)
+
+      // Approve RIZZ tokens for the game contract
+      const approveTx = await rizzContract.approve(await gameContract.getAddress(), stakeInWei)
+      await approveTx.wait()
+
+      // Start the game
+      // const finishtx = await vibeGame_finishGame(gameContract);
+      // await finishtx.wait()
+      const startTx = await vibeGame_startGame(gameContract, stakeInWei)
+      await startTx.wait()
+
+      // Update game state
+      const multiplier = generateRandomMultiplier()
+      const randomIndex = Math.floor(Math.random() * SAMPLE_QUESTIONS.length)
+      const randomQuestion = SAMPLE_QUESTIONS[randomIndex]
+      
+      setGameState(prev => ({
+        ...prev,
+        gameStarted: true,
+        stakedAmount: stakeAmount,
+        multiplier,
+        currentQuestion: 0,
+        userAnswers: [],
+        results: [],
+        questions: [randomQuestion]
+      }))
+
+      // Refresh balance
+      fetchRizzBalance()
+      setContractResult(`Game started with ${stakeAmount} RIZZ staked`)
+    } catch (e) {
+      setContractResult(`Error starting game: ${(e as Error).message}`)
+    }
+  }
+
+  // Submit answer with smart contract
+  const submitAnswerWithContract = async () => {
+    if (selectedAnswer === null || !walletProvider || !user?.wallet) return
+
+    setIsAnswering(true)
+    const currentQ = gameState.questions[gameState.currentQuestion]
+    const isCorrect = selectedAnswer === currentQ.correctAnswer
+    
+    try {
+      const provider = await walletProvider
+      if (!provider) {
+        setContractResult('Provider not available')
+        return
+      }
+
+      const signer = await provider.getSigner()
+      // const gameContract = getVibeGameContract(signer)
+
+      // For now, use a mock request ID since we're not using VRF
+      const mockRequestId = 1
+      
+      // Answer the question
+      // const answerTx = await gameContract.answerQuestion(isCorrect, mockRequestId)
+      // await answerTx.wait()
+
+      // Calculate rewards using local multiplier for display
+      const stakeAmount = gameState.stakedAmount
+      const multiplier = gameState.multiplier
+      
+      let earned = 0
+      let lost = 0
+
+      if (isCorrect) {
+        earned = Math.floor(stakeAmount * multiplier)
+      } else {
+        lost = stakeAmount
+      }
+
+      const newResult = { correct: isCorrect, earned, lost }
+      
+      setGameState(prev => ({
         ...prev,
         userAnswers: [...prev.userAnswers, selectedAnswer],
         results: [...prev.results, newResult],
-        score: isCorrect ? prev.score + 1 : prev.score,
-        rizzBalance: isCorrect ? prev.rizzBalance + earned : prev.rizzBalance,
-      }));
+        score: isCorrect ? prev.score + 1 : prev.score
+      }))
+      
+      setShowResult(true)
+      setIsAnswering(false)
+      const gameContract = getVibeGameContract(signer)
+      const finishtx = await vibeGame_finishGame(gameContract);
+      await finishtx.wait();
+      setContractResult(`Question answered: ${isCorrect ? 'Correct' : 'Wrong'} with multiplier ${multiplier}x`)
+    } catch (e) {
+      setContractResult(`Error answering question: ${(e as Error).message}`)
+      setIsAnswering(false)
+    }
+  }
 
-      setShowResult(true);
-      setIsAnswering(false);
-    }, 1000);
-  };
+  // Finish game with smart contract
+  const finishGameWithContract = async () => {
+    if (!walletProvider || !user?.wallet) return
+
+    try {
+      const provider = await walletProvider
+      if (!provider) {
+        setContractResult('Provider not available')
+        return
+      }
+
+      const signer = await provider.getSigner()
+      const gameContract = getVibeGameContract(signer)
+
+      const finishTx = await gameContract.finishGame()
+      await finishTx.wait()
+
+      setGameState(prev => ({
+        ...prev,
+        gameEnded: true
+      }))
+
+      setContractResult('Game finished successfully')
+    } catch (e) {
+      setContractResult(`Error finishing game: ${(e as Error).message}`)
+    }
+  }
+
+  // Claim rewards with smart contract
+  const claimRewardsWithContract = async () => {
+    if (!walletProvider || !user?.wallet) return
+
+    try {
+      const provider = await walletProvider
+      if (!provider) {
+        setContractResult('Provider not available')
+        return
+      }
+
+      const signer = await provider.getSigner()
+      const rizzContract = getRizzTokenContract(signer)
+      
+      // Calculate reward amount: stake amount * multiplier
+      const stakeAmount = gameState.stakedAmount
+      const multiplier = gameState.multiplier
+      const rewardAmount = stakeAmount * multiplier
+      
+      // Convert to wei with 10^9 decimals
+      const rewardInWei = BigInt(rewardAmount) * BigInt(10 ** 9)
+      
+      // Mint RIZZ tokens to the user as reward
+      const mintTx = await rizzContract.mint(user.wallet, rewardInWei)
+      await mintTx.wait()
+
+      // Refresh balance
+      fetchRizzBalance()
+      setContractResult(`Rewards claimed successfully: ${rewardAmount} RIZZ minted (${rewardInWei} wei)`)
+    } catch (e) {
+      setContractResult(`Error claiming rewards: ${(e as Error).message}`)
+    }
+  }
+
+  // Start game
+  const startGame = () => {
+    startGameWithContract()
+  }
+
+  // Submit answer
+  const submitAnswer = () => {
+    submitAnswerWithContract()
+  }
 
   // Next question
   const nextQuestion = () => {
-    endGame();
-    setSelectedAnswer(null);
-    setShowResult(false);
-  };
-
-  // End game
-  const endGame = () => {
-    setGameState((prev) => ({
-      ...prev,
-      gameEnded: true,
-    }));
-  };
+    finishGameWithContract()
+    setSelectedAnswer(null)
+    setShowResult(false)
+  }
 
   // Reset game
   const resetGame = () => {
@@ -291,7 +325,7 @@ export default function QuizPage() {
 
   // Refresh balance after transactions
   const handleBalanceOf = async () => {
-    if (!ethersProvider || !user?.wallet) {
+    if (!walletProvider || !user?.wallet) {
       setContractResult("Provider or user address not available");
       return;
     }
@@ -305,7 +339,7 @@ export default function QuizPage() {
 
       const result = await rizzToken_balanceOf(contract, user.wallet);
       const decimals = await contract.decimals();
-      const formattedBalance = (Number(result) / Math.pow(10, decimals)).toFixed(2);
+      const formattedBalance = (Number(result/BigInt(1000000000))).toString();
       
       setContractResult(`RizzToken.balanceOf: ${formattedBalance} RIZZ`);
       setRealRizzBalance(formattedBalance); // Update real balance
@@ -314,7 +348,7 @@ export default function QuizPage() {
     }
   };
   const handleTransfer = async () => {
-    if (!ethersProvider || !user?.wallet) {
+    if (!walletProvider || !user?.wallet) {
       setContractResult("Provider or user address not available");
       return;
     }
@@ -333,7 +367,7 @@ export default function QuizPage() {
     }
   };
   const handleApprove = async () => {
-    if (!ethersProvider || !user?.wallet) {
+    if (!walletProvider || !user?.wallet) {
       setContractResult("Provider or user address not available");
       return;
     }
@@ -352,7 +386,7 @@ export default function QuizPage() {
     }
   };
   const handleMint = async () => {
-    if (!ethersProvider || !user?.wallet) {
+    if (!walletProvider || !user?.wallet) {
       setContractResult("Provider or user address not available");
       return;
     }
@@ -375,7 +409,7 @@ export default function QuizPage() {
     }
   };
   const handleGetRequestStatus = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -395,7 +429,7 @@ export default function QuizPage() {
     }
   };
   const handleRequestRandomWords = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -414,10 +448,6 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameStart = async () => {
-    if (!ethersProvider) {
-      setContractResult("Provider not available");
-      return;
-    }
     try {
       const provider = await walletProvider;
       if (!provider) {
@@ -433,7 +463,7 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameAnswer = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -452,7 +482,7 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameClaim = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -471,7 +501,7 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameFinish = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -490,7 +520,7 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameForfeit = async () => {
-    if (!ethersProvider) {
+    if (!walletProvider) {
       setContractResult("Provider not available");
       return;
     }
@@ -509,7 +539,7 @@ export default function QuizPage() {
     }
   };
   const handleVibeGameGames = async () => {
-    if (!ethersProvider || !user?.wallet) {
+    if (!walletProvider || !user?.wallet) {
       setContractResult("Provider or user address not available");
       return;
     }
@@ -792,6 +822,16 @@ export default function QuizPage() {
                 ? "Next Question"
                 : "View Results"}
             </button>
+            
+            {/* Show claim button only for correct answers */}
+            {gameState.results[gameState.results.length - 1]?.correct && (
+              <button
+                onClick={claimRewardsWithContract}
+                className="bg-green-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-600 transition-colors ml-4"
+              >
+                Claim Reward
+              </button>
+            )}
           </div>
         )}
 
@@ -889,11 +929,17 @@ export default function QuizPage() {
             >
               Play Again
             </button>
+            <button
+              onClick={claimRewardsWithContract}
+              className="bg-green-500 text-white px-8 py-3 rounded-lg font-semibold text-lg hover:bg-green-600 transition-colors ml-4"
+            >
+              Claim Rewards
+            </button>
           </div>
         )}
 
         {/* Add this section at the bottom of the main return, only for authenticated users */}
-        {authenticated && user && (
+        {/* {authenticated && user && (
           <div className="mt-12 p-6 bg-gray-100 rounded-xl">
             <h2 className="text-xl font-bold mb-4">
               Smart Contract Function Demo
@@ -976,7 +1022,7 @@ export default function QuizPage() {
               {contractResult}
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
