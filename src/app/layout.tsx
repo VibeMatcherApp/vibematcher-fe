@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import { AuthenticatedLayout } from "@/components/AuthenticatedLayout";
+import { QueryClientWrapper } from "@/components/QueryClientWrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="en" className="overflow-x-hidden">
       <body className={`${inter.className} overflow-x-hidden`}>
         <Providers>
-          <AuthenticatedLayout>{children}</AuthenticatedLayout>
+          <QueryClientWrapper>
+            <AuthenticatedLayout>{children}</AuthenticatedLayout>
+          </QueryClientWrapper>
         </Providers>
       </body>
     </html>

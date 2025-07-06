@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { UserProfileModal } from '@/components/UserProfileModal';
+import { useQuery } from '@tanstack/react-query';
+import AgentChatPage from '@/components/chat/agent';
+import { agentIds } from '@/setting';
 
 interface Message {
   id: number;
@@ -18,6 +21,8 @@ const matchedUser = {
 
 export default function ChatDetailPage() {
   const router = useRouter();
+  const params = useParams();
+  const chatId = params?.chatId as string | undefined;
   const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: 'Hello!', sender: 'Alice', timestamp: new Date() },
     { id: 2, text: 'Hi there!', sender: 'You', timestamp: new Date() },
@@ -42,6 +47,10 @@ export default function ChatDetailPage() {
 
   const handleOpenProfile = () => setShowProfileModal(true);
   const handleCloseProfile = () => setShowProfileModal(false);
+
+  if (chatId && agentIds.some((e: string) => e===chatId)) {
+    return <AgentChatPage />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

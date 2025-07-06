@@ -13,6 +13,7 @@
     "@react-spring/web": "^9.7.5",
     "@reown/appkit": "^1.7.9",
     "@solana/spl-token": "^0.4.13",
+    "@tanstack/react-query": "^5.81.5",
     "axios": "^1.9.0",
     "clsx": "^2.1.1",
     "countries-list": "^3.1.1",
