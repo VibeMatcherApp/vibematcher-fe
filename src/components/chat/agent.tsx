@@ -3,9 +3,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { sendAgentMessage } from '@/lib/data/agent';
+import { usePrivy } from '@privy-io/react-auth';
 
 function AgentChatPage() {
     const params = useParams();
+    const {user} = usePrivy();
     const agentId = params?.chatId as string | undefined;
     const [messages, setMessages] = useState<{ text: string; user: string }[]>([]);
     const [input, setInput] = useState("");
@@ -19,7 +21,7 @@ function AgentChatPage() {
             const res = await fetch(`https://agents-api.doodles.app/agents/${agentId}`);
             if (!res.ok) throw new Error('Failed to fetch agent');
             const data = await res.json();
-            return { name: data.name, avatar: data.avatar };
+            return { name: data.name, avatar: data.avatar, bio: data.bio };
         },
         enabled: !!agentId,
     });
@@ -27,11 +29,11 @@ function AgentChatPage() {
     const sendMessage = async () => {
         if (!input.trim() || !agentId) return;
         setLoading(true);
-        const userMessage = { text: input, user: "user" };
+        const userMessage = { text: input, user: user?.wallet?.address ?? ""};
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         try {
-            const data = await sendAgentMessage(agentId, userMessage); // Uncomment if needed
+            const data = await sendAgentMessage(agentId, {...userMessage, text: `{walletAddress: "${user?.wallet?.address}", userMessage: "${userMessage.text}"}`}); // Uncomment if needed
             const agentMessage = Array.isArray(data) ? data[0] : data;
             setMessages((prev) => [...prev, { text: agentMessage.text, user: "agent" }]);
         } catch {
