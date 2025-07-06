@@ -111,4 +111,22 @@ export const addFriend = async (wallet1: string, wallet2: string) => {
     console.error('Error adding friend:', error)
     throw error
   }
-} 
+}
+
+// Swipe (like or pass) a user
+export const swipeUser = async (
+  userWallet: string,
+  targetWallet: string,
+  action: 'like' | 'pass'
+) => {
+  try {
+    const { data } = await api.post(`/api/users/${userWallet}/swipe`, {
+      target_wallet: targetWallet,
+      action,
+    });
+    return data;
+  } catch (error) {
+    console.error('Error swiping user:', error);
+    throw error;
+  }
+};

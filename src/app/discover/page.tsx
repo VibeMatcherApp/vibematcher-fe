@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
 import { useAuthStore } from '@/store/auth'
 import { MatchSuccess } from '@/components/MatchSuccess'
-import { getAllUsers, getMatchPercentage, addFriend, getUser } from '@/lib/api'
+import { getAllUsers, getMatchPercentage, addFriend, getUser, swipeUser } from '@/lib/api'
 import { User } from '@/types'
 import TinderCard from 'react-tinder-card'
 import { PieChart } from '@/components/PieChart'
@@ -125,6 +125,14 @@ export default function DiscoverPage() {
     setLastDirection(direction)
     const currentUserWallet = currentUser?.wallet || currentUser?.wallet_address
     const user = users[index]
+
+    if ((direction === 'left' || direction === 'right') && currentUserWallet && user?.wallet_address) {
+      swipeUser(
+        currentUserWallet,
+        user.wallet_address,
+        direction === 'right' ? 'like' : 'pass'
+      ).catch((err) => console.error('swipeUser error:', err));
+    }
 
     if (direction === 'right' && currentUserWallet && user?.wallet_address) {
       console.log('liked')
