@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { sendAgentMessage } from '@/lib/data/agent';
 import { usePrivy } from '@privy-io/react-auth';
+import { prompt } from '@/setting/agent';
 
 function AgentChatPage() {
     const params = useParams();
@@ -33,7 +34,7 @@ function AgentChatPage() {
         setMessages((prev) => [...prev, userMessage]);
         setInput("");
         try {
-            const data = await sendAgentMessage(agentId, {...userMessage, text: `{walletAddress: "${user?.wallet?.address}", userMessage: "${userMessage.text}"}`}); // Uncomment if needed
+            const data = await sendAgentMessage(agentId, {...userMessage, text: `{prompt: "${prompt}", walletAddress: "${user?.wallet?.address}", userMessage: "${userMessage.text}"}`}); // Uncomment if needed
             const agentMessage = Array.isArray(data) ? data[0] : data;
             setMessages((prev) => [...prev, { text: agentMessage.text, user: "agent" }]);
         } catch {
@@ -80,12 +81,12 @@ function AgentChatPage() {
                                 <div
                                     key={idx}
                                     className={`flex ${
-                                        msg.user === "user" ? "justify-end" : "justify-start"
+                                        msg.user === user?.wallet?.address ? "justify-end" : "justify-start"
                                     }`}
                                 >
                                     <div
                                         className={`max-w-[70%] rounded-lg p-3 ${
-                                            msg.user === "user"
+                                            msg.user === user?.wallet?.address
                                                 ? "bg-primary text-white"
                                                 : msg.user === "agent"
                                                     ? "bg-gray-100 text-gray-900"
@@ -93,9 +94,6 @@ function AgentChatPage() {
                                         }`}
                                     >
                                         <p className="text-sm">{msg.text}</p>
-                                        <p className="text-xs mt-1 opacity-70">
-                                            {new Date().toLocaleTimeString()}
-                                        </p>
                                     </div>
                                 </div>
                             ))}
