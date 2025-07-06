@@ -3,12 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
+import { menuItems } from '@/setting'
 
-const menuItems = [
-  { name: 'Discover', path: '/discover' },
-  { name: 'Chat', path: '/chat' },
-  { name: 'Profile', path: '/profile' },
-]
 
 export function BottomNav() {
   const pathname = usePathname()

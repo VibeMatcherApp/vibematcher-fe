@@ -4,12 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { usePrivy } from '@privy-io/react-auth'
-
-const menuItems = [
-  { name: 'Discover', path: '/discover' },
-  { name: 'Chat', path: '/chat' },
-  { name: 'Profile', path: '/profile' },
-]
+import { menuItems } from '@/setting'
 
 interface SidebarProps {
   onToggle: (isOpen: boolean) => void
