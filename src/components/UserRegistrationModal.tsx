@@ -17,9 +17,7 @@ export function UserRegistrationModal({
   onError 
 }: UserRegistrationModalProps) {
   const [formData, setFormData] = useState({
-    nickname: '',
-    age: '',
-    bio: ''
+    nickname: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -59,7 +57,7 @@ export function UserRegistrationModal({
         </h2>
         
         <p className="text-gray-600 mb-6 text-center">
-          We need some basic information to create your account
+          We need your nickname to create your account
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,37 +77,6 @@ export function UserRegistrationModal({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Age (Optional)
-            </label>
-            <input
-              type="number"
-              value={formData.age}
-              onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-              placeholder="Enter your age"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-500"
-              min="18"
-              max="100"
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Bio (Optional)
-            </label>
-            <textarea
-              value={formData.bio}
-              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              placeholder="Tell us about yourself..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-gray-900 placeholder-gray-500"
-              rows={3}
-              disabled={isSubmitting}
-              maxLength={200}
-            />
-          </div>
-
           <div className="flex space-x-3 pt-4">
             <button
               type="submit"
@@ -122,7 +89,7 @@ export function UserRegistrationModal({
         </form>
 
         <p className="text-xs text-gray-500 mt-4 text-center">
-          You can complete more details in your profile page after account creation
+          You can complete your profile details after account creation
         </p>
       </div>
     </div>

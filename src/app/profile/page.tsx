@@ -654,6 +654,21 @@ export default function ProfilePage() {
                 </div>
 
                 <div>
+                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                    Bio
+                  </label>
+                  <textarea
+                    id="bio"
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    rows={4}
+                    maxLength={500}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900"
+                  />
+                  <div className="text-xs text-gray-400 text-right">{formData.bio.length}/500</div>
+                </div>
+
+                <div>
                   <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">
                     Country
                   </label>
@@ -726,21 +741,6 @@ export default function ProfilePage() {
                     placeholder="Select Languages"
                     isMulti
                   />
-                </div>
-
-                <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-                    Bio
-                  </label>
-                  <textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    rows={4}
-                    maxLength={500}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900"
-                  />
-                  <div className="text-xs text-gray-400 text-right">{formData.bio.length}/500</div>
                 </div>
 
                 <div>
