@@ -130,3 +130,92 @@ export const swipeUser = async (
     throw error;
   }
 };
+
+// Note: Swipe recording is handled by the existing swipeUser function above
+
+// Get user matches with chat information
+export const getUserMatches = async (userWallet: string) => {
+  try {
+    const { data } = await api.get(`/api/users/${userWallet}/matches`);
+    return data;
+  } catch (error) {
+    console.error('Error getting user matches:', error);
+    throw error;
+  }
+};
+
+// Get swipe history
+export const getSwipeHistory = async (userWallet: string) => {
+  try {
+    const { data } = await api.get(`/api/users/${userWallet}/swipe-history`);
+    return data;
+  } catch (error) {
+    console.error('Error getting swipe history:', error);
+    throw error;
+  }
+};
+
+// ========== CHAT API FUNCTIONS ==========
+
+// Create a new chat between two users
+export const createChat = async (user1: string, user2: string) => {
+  try {
+    const { data } = await api.post('/api/chats/create', {
+      user1,
+      user2,
+    });
+    return data;
+  } catch (error) {
+    console.error('Error creating chat:', error);
+    throw error;
+  }
+};
+
+// Send a message in a chat
+export const sendMessage = async (chatId: string, message: string, sender: string) => {
+  try {
+    const { data } = await api.post(`/api/chats/${chatId}/send`, {
+      message,
+      sender,
+    });
+    return data;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+};
+
+// Get chat messages
+export const getChatMessages = async (chatId: string) => {
+  try {
+    const { data } = await api.get(`/api/chats/${chatId}`);
+    return data;
+  } catch (error) {
+    console.error('Error getting chat messages:', error);
+    throw error;
+  }
+};
+
+// Mark messages as read
+export const markMessagesAsRead = async (chatId: string, userWallet: string) => {
+  try {
+    const { data } = await api.patch(`/api/chats/${chatId}/read`, {
+      user_wallet: userWallet,
+    });
+    return data;
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    throw error;
+  }
+};
+
+// Get user chats
+export const getUserChats = async (userWallet: string) => {
+  try {
+    const { data } = await api.get(`/api/chats/user/${userWallet}`);
+    return data;
+  } catch (error) {
+    console.error('Error getting user chats:', error);
+    throw error;
+  }
+};
