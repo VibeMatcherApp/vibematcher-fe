@@ -100,6 +100,8 @@ export default function ProfilePage() {
   const [isNewUser, setIsNewUser] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isProcessingImage, setIsProcessingImage] = useState(false)
+  const [isRefreshingAssets, setIsRefreshingAssets] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
   const shareRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -220,6 +222,56 @@ export default function ProfilePage() {
       img.onerror = () => reject(new Error('Image load failed'))
       img.src = URL.createObjectURL(file)
     })
+  }
+
+  const handleRefreshAssets = async () => {
+    if (!currentUser?.wallet?.address) return
+    
+    setIsRefreshingAssets(true)
+    setRefreshMessage(null)
+    
+    try {
+      // 重新获取用户数据，这应该会包含最新的链上资产信息
+      const updatedUser = await getUser(currentUser.wallet.address)
+      
+      // 确保API返回了有效的用户数据
+      if (updatedUser && updatedUser.wallet_address === currentUser.wallet.address) {
+        setUser(updatedUser)
+        
+        setRefreshMessage({
+          type: 'success',
+          text: 'Assets data updated successfully!'
+        })
+        
+        // Auto-hide success message after 3 seconds
+        setTimeout(() => {
+          setRefreshMessage(null)
+        }, 3000)
+      } else {
+        // 如果返回的数据无效，显示错误
+        setRefreshMessage({
+          type: 'error',
+          text: 'Failed to update assets data. Please try again.'
+        })
+        
+        setTimeout(() => {
+          setRefreshMessage(null)
+        }, 5000)
+      }
+    } catch (error: any) {
+      console.error('Error refreshing assets:', error)
+      setRefreshMessage({
+        type: 'error',
+        text: error?.response?.data?.message || 'Error updating assets data. Please try again later.'
+      })
+      
+      // Auto-hide error message after 5 seconds
+      setTimeout(() => {
+        setRefreshMessage(null)
+      }, 5000)
+    } finally {
+      setIsRefreshingAssets(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -492,14 +544,23 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Edit Mode Controls */}
-          {isEditing ? (
-            <div className="border-t pt-4">
-              <div className="flex flex-col space-y-4">
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mt-4">
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            {isEditing ? (
+              <div className="space-y-6">
+                {/* Header with title and buttons */}
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-xl font-bold text-gray-900">
                     {isNewUser ? 'Complete Your Profile' : 'Edit Profile'}
-                  </h3>
+                  </h2>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => {
@@ -536,7 +597,7 @@ export default function ProfilePage() {
                         <span className="flex items-center space-x-2">
                           <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 718-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
                           <span>Saving...</span>
                         </span>
@@ -546,35 +607,8 @@ export default function ProfilePage() {
                     </button>
                   </div>
                 </div>
-                {errorMsg && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                    {errorMsg}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Normal Mode Controls */
-            (!isNewUser && (
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center">
-                  <p className="text-gray-600 text-sm">Manage your profile information</p>
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    Edit Profile
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            {isEditing ? (
-              <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
+                
+                <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
                   <div className="flex items-center gap-4">
@@ -739,9 +773,21 @@ export default function ProfilePage() {
 
 
               </form>
+              </div>
             ) : (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900">Profile Details</h2>
+                {/* Header with title and edit button */}
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-gray-900">Profile Details</h2>
+                  {!isNewUser && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      Edit Profile
+                    </button>
+                  )}
+                </div>
                 <div>
                   <h3 className="font-medium text-gray-500">Bio</h3>
                   <p className="text-gray-900">{user?.profile?.bio || user?.bio || '-'}</p>
@@ -818,35 +864,78 @@ export default function ProfilePage() {
                   <PieChart data={chartData} />
                 </div>
               </div>
-              <button
-                className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-lg shadow-lg hover:from-teal-500 hover:to-cyan-600 transition-all transform hover:scale-105"
-                onClick={async () => {
-                  setShowShareModal(true)
-                  setShareImgUrl(null)
-                  if (!shareRef.current) return
+              
+              {/* Action Buttons */}
+              <div className="mt-4">
+                {/* Side-by-side buttons */}
+                <div className="flex gap-3">
+                  {/* Update Assets Button */}
+                  <button
+                    onClick={handleRefreshAssets}
+                    disabled={isRefreshingAssets}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isRefreshingAssets ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 04 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                        </svg>
+                        <span>Update Assets</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* Share Button */}
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-lg shadow-lg hover:from-teal-500 hover:to-cyan-600 transition-all transform hover:scale-105"
+                    onClick={async () => {
+                      setShowShareModal(true)
+                      setShareImgUrl(null)
+                      if (!shareRef.current) return
 
-                  try {
-                    // Short delay to allow modal to render before capturing
-                    await new Promise(resolve => setTimeout(resolve, 100))
+                      try {
+                        // Short delay to allow modal to render before capturing
+                        await new Promise(resolve => setTimeout(resolve, 100))
 
-                    const dataUrl = await domtoimage.toPng(shareRef.current, {
-                      quality: 1,
-                      width: 420,
-                      height: shareRef.current.offsetHeight,
-                    })
-                    setShareImgUrl(dataUrl)
-                  } catch (err) {
-                    console.error('Failed to generate share image:', err)
-                    alert('Failed to generate image, please try again')
-                    setShowShareModal(false)
-                  }
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
-                </svg>
-                <span>Share My Vibe!</span>
-              </button>
+                        const dataUrl = await domtoimage.toPng(shareRef.current, {
+                          quality: 1,
+                          width: 420,
+                          height: shareRef.current.offsetHeight,
+                        })
+                        setShareImgUrl(dataUrl)
+                      } catch (err) {
+                        console.error('Failed to generate share image:', err)
+                        alert('Failed to generate image, please try again')
+                        setShowShareModal(false)
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                    </svg>
+                    <span>Share My Vibe!</span>
+                  </button>
+                </div>
+                
+                {/* Message display below buttons */}
+                {refreshMessage && (
+                  <div className={`mt-3 p-3 rounded-lg text-sm ${
+                    refreshMessage.type === 'success' 
+                      ? 'bg-green-50 border border-green-200 text-green-700' 
+                      : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}>
+                    {refreshMessage.text}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

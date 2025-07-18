@@ -28,7 +28,7 @@ export function PieChart({ data, matchPercentage }: PieChartProps) {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center">
-      <div className="relative w-[300px] h-[240px]">
+      <div className="relative w-full h-[240px] max-w-[300px]">
         <RechartsPieChart width={300} height={240}>
           <Pie
             data={data}
@@ -44,7 +44,11 @@ export function PieChart({ data, matchPercentage }: PieChartProps) {
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: number) => [`${((value / total) * 100).toFixed(1)}%`, '']}
+            formatter={(value: number, name: string) => [
+              `${name}: ${((value / total) * 100).toFixed(1)}%`
+            ]}
+            labelFormatter={() => ''}
+            separator=""
             contentStyle={{
               backgroundColor: 'white',
               border: 'none',

@@ -9,6 +9,7 @@ import { getAllUsers, getMatchPercentage, addFriend, getUser, swipeUser } from '
 import { User } from '@/types'
 import TinderCard from 'react-tinder-card'
 import { PieChart } from '@/components/PieChart'
+import { countries } from 'countries-list'
 
 export default function DiscoverPage() {
   const { authenticated } = usePrivy()
@@ -67,15 +68,54 @@ export default function DiscoverPage() {
 
               return {
                 ...user,
+                nickname: detailedUser.nickname || user.nickname || 'Anonymous',
+                profile: {
+                  age: detailedUser.profile?.age || detailedUser.age,
+                  gender: detailedUser.profile?.gender || detailedUser.gender,
+                  region: detailedUser.profile?.region || detailedUser.region,
+                  bio: detailedUser.profile?.bio || detailedUser.bio,
+                  languages: detailedUser.profile?.languages || [],
+                  timezone: detailedUser.profile?.timezone || detailedUser.timezone,
+                  avatar: detailedUser.profile?.avatar || detailedUser.avatarUrl,
+                  ...detailedUser.profile,
+                },
+                social_links: {
+                  x_profile: detailedUser.social_links?.x_profile,
+                  telegram_profile: detailedUser.social_links?.telegram_profile,
+                  ...detailedUser.social_links,
+                },
+                bio: detailedUser.profile?.bio || detailedUser.bio || '',
+                avatarUrl: detailedUser.profile?.avatar || detailedUser.avatarUrl || '',
                 tokenDistribution: detailedUser.chain_data?.distribution || {},
                 tags,
+                // Add loading state for individual user
+                isLoaded: true,
               }
             } catch (error) {
               console.error(
                 `Error fetching details for user ${user.wallet_address!}:`,
                 error
               )
-              return user; 
+              // Return user with basic structure even if API call fails
+              return {
+                ...user,
+                nickname: user.nickname || 'Anonymous',
+                profile: {
+                  age: user.age,
+                  gender: user.gender,
+                  region: user.region,
+                  bio: user.bio,
+                  languages: [],
+                  timezone: user.timezone,
+                },
+                social_links: {},
+                bio: user.bio || '',
+                avatarUrl: user.avatarUrl || '',
+                tokenDistribution: {},
+                tags: { blockchain: [], assetType: [] },
+                isLoaded: false,
+                hasError: true,
+              }
             }
           })
         )
@@ -211,10 +251,75 @@ export default function DiscoverPage() {
               onCardLeftScreen={() => outOfFrame(user.nickname || 'Anonymous', index)}
             >
               <div className="h-full overflow-y-auto p-6 space-y-4 bg-white rounded-xl shadow-lg">
-                <h3 className="text-xl font-semibold text-primary">{user.nickname || 'Anonymous'}</h3>
+                {/* Header with avatar and name */}
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 rounded-full border-2 border-primary/20 overflow-hidden bg-gray-100 flex items-center justify-center">
+                    {user.avatarUrl ? (
+                      <img 
+                        src={user.avatarUrl} 
+                        alt={user.nickname || 'Anonymous'} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-semibold text-primary">{user.nickname || 'Anonymous'}</h3>
+                      {user.hasError && (
+                        <div className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full" title="Limited profile data available">
+                          Limited Info
+                        </div>
+                      )}
+                    </div>
+                    {/* Basic info line */}
+                    <div className="flex items-center space-x-2 text-sm text-gray-600 mt-1">
+                      {user.profile?.age && <span>{user.profile.age} years old</span>}
+                      {user.profile?.gender && (
+                        <>
+                          {user.profile?.age && <span>•</span>}
+                          <span>{user.profile.gender}</span>
+                        </>
+                      )}
+                      {user.profile?.region && (
+                        <>
+                          {(user.profile?.age || user.profile?.gender) && <span>•</span>}
+                          <span>{countries[user.profile.region as keyof typeof countries]?.name || user.profile.region}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bio */}
+                {user.bio && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">About</h4>
+                    <p className="text-gray-700 text-sm leading-relaxed">{user.bio}</p>
+                  </div>
+                )}
+
+                {/* Languages */}
+                {user.profile?.languages && user.profile.languages.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Languages</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {user.profile.languages.map((language, index) => (
+                        <span key={index} className="inline-flex items-center justify-center bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {language}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tags */}
                 {user.tags && (user.tags.blockchain || user.tags.assetType) && (
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">Tags</h4>
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">Crypto Tags</h4>
                     <div className="flex flex-wrap gap-2">
                       {user.tags.blockchain && (
                         <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
@@ -237,6 +342,42 @@ export default function DiscoverPage() {
                         matchPercentage={user.matchPercentage}
                       />
                     </div>
+                    
+                    {/* Social Links */}
+                    {(user.social_links?.x_profile || user.social_links?.telegram_profile) && (
+                      <div className="flex justify-center items-center space-x-4 mt-4 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium text-gray-600">Connect:</span>
+                        {user.social_links?.x_profile && (
+                          <a
+                            href={user.social_links.x_profile}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center w-8 h-8 bg-black text-white rounded-full hover:bg-gray-800 transition-colors"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                          </a>
+                        )}
+                        {user.social_links?.telegram_profile && (
+                          <a
+                            href={user.social_links.telegram_profile}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                            </svg>
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="flex justify-center items-center space-x-4 mt-6">
                       <button
                         onMouseDown={(e) => e.stopPropagation()}
@@ -261,11 +402,6 @@ export default function DiscoverPage() {
                         <span className="pointer-events-none">Like</span>
                       </button>
                     </div>
-                  </div>
-                )}
-                {user.bio && (
-                  <div className="pt-2">
-                    <p className="text-gray-600 text-sm leading-relaxed">{user.bio}</p>
                   </div>
                 )}
               </div>

@@ -50,6 +50,9 @@ export interface User {
   // 新增
   profile?: UserProfile;
   social_links?: UserSocialLinks;
+  // Loading and error states
+  isLoaded?: boolean;
+  hasError?: boolean;
 }
 
 export interface MatchResult {
