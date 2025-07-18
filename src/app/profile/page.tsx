@@ -355,7 +355,35 @@ export default function ProfilePage() {
         )}
         <div>
           <div style={{ fontWeight: 700, fontSize: 22 }}>{user?.nickname || ''}</div>
-          <div style={{ color: '#0ea5e9', fontWeight: 600, fontSize: 14, marginTop: 2 }}>#VibeMatcher</div>
+          <div style={{ color: '#0ea5e9', fontWeight: 600, fontSize: 14, marginTop: 2 }}>
+            {(() => {
+              const allTags: string[] = []
+              
+              // Add blockchain tags
+              if (user?.tags?.blockchain) {
+                if (Array.isArray(user.tags.blockchain)) {
+                  allTags.push(...user.tags.blockchain.filter(tag => tag))
+                } else if (typeof user.tags.blockchain === 'string') {
+                  allTags.push(user.tags.blockchain)
+                }
+              }
+              
+              // Add assetType tags  
+              if (user?.tags?.assetType) {
+                if (Array.isArray(user.tags.assetType)) {
+                  allTags.push(...user.tags.assetType.filter(tag => tag))
+                } else if (typeof user.tags.assetType === 'string') {
+                  allTags.push(user.tags.assetType)
+                }
+              }
+              
+              if (allTags.length > 0) {
+                return allTags.slice(0, 3).map(tag => `#${tag.replace(/\s+/g, '')}`).join(' ')
+              } else {
+                return '#VibeMatcher'
+              }
+            })()}
+          </div>
         </div>
       </div>
       <div style={{ fontWeight: 700, fontSize: 20, margin: '16px 0 8px 0', color: '#16a34a' }}>🔥 My Token Vibe</div>
@@ -373,17 +401,42 @@ export default function ProfilePage() {
       <div style={{ position: 'absolute', left: -9999, top: 0 }}>{ShareImage}</div>
       {/* Share Image Modal */}
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center">
-            <div style={{ background: '#f0fdfa', borderRadius: 24, overflow: 'hidden', marginBottom: 16 }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center relative max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Close X button in top right */}
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600 hover:text-gray-800 z-10"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">Share Your Vibe</h3>
+            
+            <div className="w-full flex justify-center mb-6">
               {shareImgUrl ? (
-                <img src={shareImgUrl} alt="share preview" style={{ width: 420, borderRadius: 24 }} />
+                <img 
+                  src={shareImgUrl} 
+                  alt="share preview" 
+                  className="w-full max-w-[400px] h-auto rounded-2xl shadow-lg"
+                />
               ) : (
-                <div className="w-[420px] h-[480px] flex items-center justify-center text-gray-400">Generating...</div>
+                <div className="w-[400px] h-[500px] flex items-center justify-center text-gray-400 bg-gray-50 rounded-2xl">
+                  <div className="text-center">
+                    <svg className="animate-spin h-8 w-8 text-primary mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p>Generating your vibe...</p>
+                  </div>
+                </div>
               )}
             </div>
+            
             <button
-              className="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
               onClick={() => {
                 if (shareImgUrl) {
                   const a = document.createElement('a')
@@ -395,9 +448,8 @@ export default function ProfilePage() {
                 }
               }}
             >
-              Download Image
+              📱 Download for Social Media
             </button>
-            <button className="mt-2 text-gray-500 hover:underline" onClick={() => setShowShareModal(false)}>Close</button>
           </div>
         </div>
       )}
@@ -722,23 +774,6 @@ export default function ProfilePage() {
                   <h3 className="font-medium text-gray-500">Telegram</h3>
                   <p className="text-gray-900">{user?.social_links?.telegram_profile || '-'}</p>
                 </div>
-                {user?.tags && (user.tags.blockchain || user.tags.assetType) && (
-                  <div>
-                    <h3 className="font-medium text-gray-500 mb-2">Tags</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {user.tags.blockchain && (
-                        <span className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">
-                          {user.tags.blockchain}
-                        </span>
-                      )}
-                      {user.tags.assetType && (
-                        <span className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full">
-                          {user.tags.assetType}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -747,6 +782,38 @@ export default function ProfilePage() {
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div id="share-chart-area">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Token Distribution</h2>
+                
+                {/* User Tags Section */}
+                {user?.tags && (user.tags.blockchain || user.tags.assetType) && (
+                  <div className="mb-4">
+                    <h3 className="font-medium text-gray-500 mb-2">Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {user.tags.blockchain && Array.isArray(user.tags.blockchain) ? (
+                        user.tags.blockchain.map((tag, index) => tag && (
+                          <span key={`blockchain-${index}`} className="inline-flex items-center justify-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            {tag}
+                          </span>
+                        ))
+                      ) : user.tags.blockchain ? (
+                        <span className="inline-flex items-center justify-center bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {user.tags.blockchain}
+                        </span>
+                      ) : null}
+                      {user.tags.assetType && Array.isArray(user.tags.assetType) ? (
+                        user.tags.assetType.map((tag, index) => tag && (
+                          <span key={`asset-${index}`} className="inline-flex items-center justify-center bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                            {tag}
+                          </span>
+                        ))
+                      ) : user.tags.assetType ? (
+                        <span className="inline-flex items-center justify-center bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {user.tags.assetType}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+                
                 <div style={{ height: '300px' }}>
                   <PieChart data={chartData} />
                 </div>
