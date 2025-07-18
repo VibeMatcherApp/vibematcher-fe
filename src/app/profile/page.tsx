@@ -26,7 +26,7 @@ const timezoneOptions = moment.tz.names().map((tz: string) => ({
 const genderOptions = [
   { value: 'Male', label: 'Male' },
   { value: 'Female', label: 'Female' },
-  { value: 'Other', label: 'Other' },
+  { value: 'Others', label: 'Others' },
 ]
 
 // Generate age options (18-100)
@@ -97,6 +97,9 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showShareModal, setShowShareModal] = useState(false)
   const [shareImgUrl, setShareImgUrl] = useState<string | null>(null)
+  const [isNewUser, setIsNewUser] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isProcessingImage, setIsProcessingImage] = useState(false)
   const shareRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -111,6 +114,11 @@ export default function ProfilePage() {
       try {
         const data = await getUser(currentUser.wallet.address)
         setUser(data)
+        
+        // Check if user is new (missing important data)
+        const isUserNew = !data.profile?.age && !data.profile?.gender && !data.profile?.bio
+        setIsNewUser(isUserNew)
+        
         setFormData({
           nickname: data.nickname || '',
           region: data.profile?.region || data.region || '',
@@ -141,43 +149,131 @@ export default function ProfilePage() {
       setErrorMsg('Only image files are allowed!')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg('File size too large (max 5MB)')
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit for original file
+      setErrorMsg('File size too large (max 10MB)')
       return
     }
-    setAvatarFile(file)
-    setAvatarPreview(URL.createObjectURL(file))
+    
+    try {
+      setIsProcessingImage(true)
+      setErrorMsg('') // Clear any previous errors
+      
+      // Compress the image for avatar (smaller size for better performance)
+      const compressedFile = await compressImage(file, 0.8, 400) // 80% quality, max 400px
+      setAvatarFile(compressedFile)
+      const previewUrl = URL.createObjectURL(compressedFile)
+      setAvatarPreview(previewUrl)
+      setFormData(prev => ({ ...prev, avatar: previewUrl }))
+    } catch (error) {
+      setErrorMsg('Failed to process image. Please try a different image.')
+    } finally {
+      setIsProcessingImage(false)
+    }
+  }
+
+  // Helper function to compress images
+  const compressImage = (file: File, quality: number = 0.7, maxWidth: number = 800): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      const img = new Image()
+      
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+        } else {
+          if (height > maxWidth) {
+            width = (width * maxWidth) / height
+            height = maxWidth
+          }
+        }
+        
+        // Set canvas size
+        canvas.width = width
+        canvas.height = height
+        
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height)
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              })
+              resolve(compressedFile)
+            } else {
+              reject(new Error('Canvas to Blob conversion failed'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+      
+      img.onerror = () => reject(new Error('Image load failed'))
+      img.src = URL.createObjectURL(file)
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErrorMsg('')
-    if (!currentUser?.wallet?.address) return
+    setIsSubmitting(true)
+    if (!currentUser?.wallet?.address) {
+      setIsSubmitting(false)
+      return
+    }
     // 驗證
     if (formData.age && (Number(formData.age) < 13 || Number(formData.age) > 120)) {
       setErrorMsg('Age must be between 13 and 120')
+      setIsSubmitting(false)
       return
     }
     if (formData.bio.length > 500) {
       setErrorMsg('Bio must be 500 characters or less')
+      setIsSubmitting(false)
       return
     }
     if (formData.x_profile && formData.x_profile.trim() !== '' && !/^https:\/\/(www\.)?(x\.com|twitter\.com)\/[A-Za-z0-9_]+$/.test(formData.x_profile)) {
       setErrorMsg('Invalid X/Twitter profile URL format')
+      setIsSubmitting(false)
       return
     }
     if (formData.telegram_profile && formData.telegram_profile.trim() !== '' && !/^https:\/\/(www\.)?t\.me\/[A-Za-z0-9_]+$/.test(formData.telegram_profile)) {
       setErrorMsg('Invalid Telegram profile URL format')
+      setIsSubmitting(false)
       return
     }
-    // 上傳頭像
+        // Convert avatar file to base64 if needed
+    let avatarBase64 = formData.avatar
     if (avatarFile) {
-      const uploadData = new FormData()
-      uploadData.append('avatar', avatarFile)
       try {
-        await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/${currentUser.wallet.address}/avatar`, uploadData)
+        const reader = new FileReader()
+        avatarBase64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => {
+            const result = reader.result as string
+            
+            // Check if base64 is too large (smaller limit since we compress to 400px max)
+            if (result.length > 800 * 1024) { // 800KB base64 limit for compressed avatars
+              reject(new Error('Compressed image is still too large. Please try a smaller image.'))
+              return
+            }
+            
+            resolve(result)
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(avatarFile)
+        })
       } catch (err: any) {
-        setErrorMsg(err?.response?.data?.message || 'Avatar upload failed')
+        setErrorMsg(err.message || 'Failed to process avatar image')
+        setIsSubmitting(false)
         return
       }
     }
@@ -191,6 +287,7 @@ export default function ProfilePage() {
         bio: formData.bio && formData.bio.trim() !== '' ? formData.bio : undefined,
         languages: formData.languages && formData.languages.length > 0 ? formData.languages : undefined,
         timezone: formData.timezone && formData.timezone.trim() !== '' ? formData.timezone : undefined,
+        avatar: avatarBase64 && avatarBase64.trim() !== '' ? avatarBase64 : undefined,
       },
       social_links: {
         x_profile: formData.x_profile && formData.x_profile.trim() !== '' ? formData.x_profile : undefined,
@@ -198,11 +295,28 @@ export default function ProfilePage() {
       },
     }
     try {
+
       const updatedUser = await updateUser(currentUser.wallet.address, patchData)
       setUser(updatedUser)
       setIsEditing(false)
+      
+      // Update avatar preview with saved data
+      if (updatedUser.profile?.avatar) {
+        setAvatarPreview(updatedUser.profile.avatar)
+        setFormData(prev => ({ ...prev, avatar: updatedUser.profile?.avatar || '' }))
+      }
+      
+      // Clear avatar file after successful upload
+      setAvatarFile(null)
+      
+      // Update new user status
+      const isUserNew = !updatedUser.profile?.age && !updatedUser.profile?.gender && !updatedUser.profile?.bio
+      setIsNewUser(isUserNew)
     } catch (error: any) {
+
       setErrorMsg(error?.response?.data?.message || 'Error updating user data')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -254,7 +368,7 @@ export default function ProfilePage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-8 pb-24">
+    <div className="bg-gray-50 pt-8 pb-24">
       {/* Share Image block (hidden) */}
       <div style={{ position: 'absolute', left: -9999, top: 0 }}>{ShareImage}</div>
       {/* Share Image Modal */}
@@ -288,8 +402,31 @@ export default function ProfilePage() {
         </div>
       )}
       <div className="max-w-5xl mx-auto px-4">
+        {/* New User Welcome Banner - only show if not editing */}
+        {isNewUser && !isEditing && (
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Welcome to VibeMatcher!</h3>
+                <p className="text-gray-600 text-sm">Please complete your profile to help others get to know you better. Adding your age, gender, and bio will help us find better matches for you.</p>
+              </div>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+              >
+                Get Started
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-4">
               {avatarPreview ? (
                 <img src={avatarPreview} alt="avatar" className="w-16 h-16 rounded-full object-cover" />
@@ -301,55 +438,121 @@ export default function ProfilePage() {
                 <p className="text-gray-500 break-words text-sm">{user?.wallet_address}</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                if (isEditing) {
-                  // Reset form on cancel
-                  setFormData({
-                    nickname: user?.nickname || '',
-                    region: user?.profile?.region || user?.region || '',
-                    age: (user?.profile?.age ?? user?.age)?.toString() || '',
-                    timezone: user?.profile?.timezone || user?.timezone || '',
-                    gender: user?.profile?.gender || user?.gender || '',
-                    bio: user?.profile?.bio || user?.bio || '',
-                    languages: user?.profile?.languages || [],
-                    x_profile: user?.social_links?.x_profile || '',
-                    telegram_profile: user?.social_links?.telegram_profile || '',
-                    avatar: user?.profile?.avatar || user?.avatarUrl || '',
-                  })
-                  setAvatarPreview(user?.profile?.avatar || user?.avatarUrl || '')
-                  setAvatarFile(null)
-                  setErrorMsg('')
-                }
-                setIsEditing(!isEditing)
-              }}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              {isEditing ? 'Cancel' : 'Edit Profile'}
-            </button>
           </div>
+
+          {/* Edit Mode Controls */}
+          {isEditing ? (
+            <div className="border-t pt-4">
+              <div className="flex flex-col space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {isNewUser ? 'Complete Your Profile' : 'Edit Profile'}
+                  </h3>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        // Reset form on cancel
+                        const originalAvatar = user?.profile?.avatar || user?.avatarUrl || ''
+                        setFormData({
+                          nickname: user?.nickname || '',
+                          region: user?.profile?.region || user?.region || '',
+                          age: (user?.profile?.age ?? user?.age)?.toString() || '',
+                          timezone: user?.profile?.timezone || user?.timezone || '',
+                          gender: user?.profile?.gender || user?.gender || '',
+                          bio: user?.profile?.bio || user?.bio || '',
+                          languages: user?.profile?.languages || [],
+                          x_profile: user?.social_links?.x_profile || '',
+                          telegram_profile: user?.social_links?.telegram_profile || '',
+                          avatar: originalAvatar,
+                        })
+                        setAvatarPreview(originalAvatar)
+                        setAvatarFile(null)
+                        setErrorMsg('')
+                        setIsEditing(false)
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="profile-form"
+                      disabled={isSubmitting}
+                      className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center space-x-2">
+                          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Saving...</span>
+                        </span>
+                      ) : (
+                        isNewUser ? 'Complete Profile' : 'Save Changes'
+                      )}
+                    </button>
+                  </div>
+                </div>
+                {errorMsg && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {errorMsg}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Normal Mode Controls */
+            (!isNewUser && (
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-gray-600 text-sm">Manage your profile information</p>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    Edit Profile
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             {isEditing ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {errorMsg && <div className="text-red-500 text-sm">{errorMsg}</div>}
+              <form id="profile-form" onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
                   <div className="flex items-center gap-4">
-                    <label className="inline-block cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
-                      Choose Avatar
+                    <label className={`inline-block cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors ${isProcessingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      {isProcessingImage ? (
+                        <span className="flex items-center space-x-2">
+                          <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Processing...</span>
+                        </span>
+                      ) : (
+                        'Choose Avatar'
+                      )}
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handleAvatarChange}
+                        disabled={isProcessingImage}
                         className="hidden"
                       />
                     </label>
                     <span className="text-gray-700 text-sm ml-2">
-                      {avatarFile ? avatarFile.name : 'No file chosen'}
+                      {isProcessingImage ? 'Compressing image...' : (avatarFile ? avatarFile.name : 'No file chosen')}
                     </span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Images are automatically compressed to reduce file size. Max 10MB, recommended: square images.
+                  </p>
                 </div>
                 <div>
                   <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
@@ -482,14 +685,7 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                </div>
+
               </form>
             ) : (
               <div className="space-y-6">

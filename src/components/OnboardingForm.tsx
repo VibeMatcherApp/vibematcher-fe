@@ -25,7 +25,7 @@ const ageOptions = Array.from({ length: 83 }, (_, i) => ({
 const genderOptions = [
   { value: 'Male', label: 'Male' },
   { value: 'Female', label: 'Female' },
-  { value: 'Other', label: 'Other' }
+  { value: 'Others', label: 'Others' }
 ]
 
 const relationshipGoalOptions = [
@@ -83,8 +83,8 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ onSubmit, availableInte
   const { user } = usePrivy()
   const [formData, setFormData] = useState({
     username: '',
-    gender: 'other',
-    looking_for: 'other',
+    gender: 'Others',
+    looking_for: 'friends',
     birth_date: '',
     country: '',
     timezone: '',

@@ -25,7 +25,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
     <div className={`flex min-h-screen bg-gray-50 ${isSidebarOpen ? 'md:ml-64' : ''}`}>
       {authenticated && <Sidebar onToggle={(isOpen) => setIsSidebarOpen(isOpen)} />}
       <main className="flex-1 w-full transition-all duration-300 ease-in-out">
-        <div className="h-[calc(100vh-4rem)] bg-gray-50">
+        <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
           {children}
         </div>
         <BottomNav />
