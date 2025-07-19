@@ -63,6 +63,17 @@ export const getUser = async (wallet: string) => {
   }
 }
 
+// Get user profile
+export const getUserProfile = async (wallet: string) => {
+  try {
+    const { data } = await api.get(`/api/users/${wallet}/profile`)
+    return data
+  } catch (error) {
+    console.error('Error getting user profile:', error)
+    throw error
+  }
+}
+
 export const updateUser = async (wallet: string, updates: Partial<User>) => {
   try {
     const { data } = await api.patch<User>(`/api/users/${wallet}/update`, updates)

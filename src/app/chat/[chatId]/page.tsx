@@ -6,7 +6,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { useAuthStore } from '@/store/auth';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getChatMessages, sendMessage, markMessagesAsRead, getUserMatches } from '@/lib/api';
+import { getChatMessages, sendMessage, markMessagesAsRead, getUserMatches, getUserProfile } from '@/lib/api';
 import { ChatMessage, ChatMessagesResponse, Match } from '@/types';
 import AgentChatPage from '@/components/chat/agent';
 import { agentIds } from '@/setting';
@@ -25,6 +25,7 @@ export default function ChatDetailPage() {
   const [otherUser, setOtherUser] = useState<Match | null>(null);
 
   const userWallet = user?.wallet || user?.wallet_address;
+  const otherUserWallet = otherUser?.wallet_address;
 
   // Check if this is an agent chat
   if (chatId && agentIds.some((e: string) => e === chatId)) {
@@ -44,6 +45,13 @@ export default function ChatDetailPage() {
     queryKey: ['userMatches', userWallet],
     queryFn: () => getUserMatches(userWallet!),
     enabled: !!userWallet,
+  });
+
+  // Get other user's profile for the modal
+  const { data: otherUserProfile } = useQuery({
+    queryKey: ['userProfile', otherUserWallet],
+    queryFn: () => getUserProfile(otherUserWallet!),
+    enabled: !!otherUserWallet && showProfileModal,
   });
 
   // Find the other user info from matches
@@ -141,7 +149,10 @@ export default function ChatDetailPage() {
               >
                 ← Back
               </button>
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold overflow-hidden">
+              <button
+                onClick={handleOpenProfile}
+                className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold overflow-hidden hover:bg-gray-300 transition-colors cursor-pointer"
+              >
                 {otherUserAvatar ? (
                   <img
                     src={otherUserAvatar}
@@ -151,7 +162,7 @@ export default function ChatDetailPage() {
                 ) : (
                   otherUserNickname.charAt(0).toUpperCase()
                 )}
-              </div>
+              </button>
               <div className="flex-1">
                 <h2 className="text-lg font-semibold text-gray-900">
                   {otherUserNickname}
@@ -160,12 +171,6 @@ export default function ChatDetailPage() {
                   {messages.length} messages
                 </p>
               </div>
-              <button
-                onClick={handleOpenProfile}
-                className="text-blue-500 hover:text-blue-600 font-medium"
-              >
-                View Profile
-              </button>
             </div>
 
             {/* Messages area */}
@@ -215,7 +220,7 @@ export default function ChatDetailPage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className="flex-1 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-gray-900"
                   disabled={sendMessageMutation.isPending}
                 />
                 <button
@@ -231,14 +236,11 @@ export default function ChatDetailPage() {
         </div>
 
         {/* Profile modal */}
-        {showProfileModal && otherUser && (
+        {showProfileModal && otherUser && otherUserProfile && (
           <UserProfileModal
             nickname={otherUser.user_info.nickname}
-            tags={{ 
-              blockchain: [otherUser.user_info.tags?.blockchain || 'Unknown'], 
-              assetType: [otherUser.user_info.tags?.assetType || 'Unknown'] 
-            }}
-            tokenDistribution={{ ETH: 50, BTC: 30, USDT: 20 }} // Placeholder data
+            tags={otherUserProfile.tags || { blockchain: ['Unknown'], assetType: ['Unknown'] }}
+            tokenDistribution={otherUserProfile.tokenDistribution || otherUserProfile.chain_data?.distribution || {}}
             onClose={handleCloseProfile}
           />
         )}
