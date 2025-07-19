@@ -172,10 +172,10 @@ export const createChat = async (user1: string, user2: string) => {
 };
 
 // Send a message in a chat
-export const sendMessage = async (chatId: string, message: string, sender: string) => {
+export const sendMessage = async (chatId: string, content: string, sender: string) => {
   try {
     const { data } = await api.post(`/api/chats/${chatId}/send`, {
-      message,
+      content,
       sender,
     });
     return data;
@@ -186,9 +186,9 @@ export const sendMessage = async (chatId: string, message: string, sender: strin
 };
 
 // Get chat messages
-export const getChatMessages = async (chatId: string) => {
+export const getChatMessages = async (chatId: string, page = 1, limit = 50) => {
   try {
-    const { data } = await api.get(`/api/chats/${chatId}`);
+    const { data } = await api.get(`/api/chats/${chatId}?page=${page}&limit=${limit}`);
     return data;
   } catch (error) {
     console.error('Error getting chat messages:', error);
@@ -200,7 +200,7 @@ export const getChatMessages = async (chatId: string) => {
 export const markMessagesAsRead = async (chatId: string, userWallet: string) => {
   try {
     const { data } = await api.patch(`/api/chats/${chatId}/read`, {
-      user_wallet: userWallet,
+      userWallet,
     });
     return data;
   } catch (error) {
