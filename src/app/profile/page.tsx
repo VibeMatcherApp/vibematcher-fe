@@ -7,7 +7,8 @@ import { User } from '@/types'
 import { PieChart } from '@/components/PieChart'
 import Select from 'react-select'
 import { countries } from 'countries-list'
-import moment from 'moment-timezone'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const moment = require('moment-timezone')
 import { getUser, updateUser } from '@/lib/api'
 import axios from 'axios'
 import domtoimage from 'dom-to-image'

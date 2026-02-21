@@ -1,5 +1,57 @@
 import axios from 'axios'
 import { User, MatchResult } from '@/types'
+const APP_KEY = process.env.NEXT_APP_KEY as string
+
+let _decClient:
+  | (InstanceType<NonNullable<typeof window.DecryptionClient>>)
+  | null = null
+
+function getDecryptionClient() {
+  if (typeof window === 'undefined') return null
+  if (!_decClient) {
+    if (!window.DecryptionClient) {
+      console.warn('DecryptionClient not found. Check script loading.')
+      return null
+    }
+    if (!APP_KEY) {
+      console.warn('APP_KEY missing. Return raw JSON without decryption.')
+      return null
+    }
+    _decClient = new window.DecryptionClient(APP_KEY)
+  }
+  return _decClient
+}
+
+function looksEncrypted(payload: any): boolean {
+  if (!payload || typeof payload !== 'object') return false
+  if (payload._encryption_info) return true
+  try {
+    return JSON.stringify(payload).includes('"_encrypted":true')
+  } catch {
+    return false
+  }
+}
+
+function decryptIfNeeded(data: any) {
+  const client = getDecryptionClient()
+  if (!client) return data
+  if (!looksEncrypted(data)) return data
+
+  const info = (data as any)._encryption_info
+  if (info && (info.algorithm !== 'AES-256-CBC' || info.version !== '1.0')) {
+    console.warn('Encryption info mismatch, return raw JSON.', info)
+    return data
+  }
+
+  try {
+    return Array.isArray(data)
+      ? client.decryptUsersArray(data)
+      : client.decryptCompleteUserData(data)
+  } catch (e) {
+    console.error('Decrypt failed. Fallback to raw JSON.', e)
+    return data
+  }
+}
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
@@ -21,6 +73,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.status, response.config.url)
+    try {
+      response.data = decryptIfNeeded(response.data)
+    } catch (e) {
+      // 解密失敗不阻擋流程
+      console.error('Decrypt interceptor error:', e)
+    }
     return response
   },
   (error) => {
