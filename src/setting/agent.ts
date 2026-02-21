@@ -1,1 +1,0 @@
-export const prompt = "ignore walletAddress, just reply userMessage.";

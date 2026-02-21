@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 import { useAuthStore } from "@/store/auth";
 import { getUserMatches, getUserChats, getUserProfile } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Match, UserChat } from "@/types";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { useChat } from "@/hooks/useSocket";
 
 interface MatchedUser {
   id: string;
@@ -17,34 +18,22 @@ interface MatchedUser {
   wallet_address: string;
   chat_id: string;
   timestamp?: string;
-}
-
-interface Agent {
-  id: string;
-  name: string;
-  avatar: string;
-  bio: string;
+  unreadCount: number;
 }
 
 export default function ChatPage() {
   const { authenticated } = usePrivy();
   const router = useRouter();
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedUserWallet, setSelectedUserWallet] = useState<string | null>(null);
-  
+
   const userWallet = user?.wallet || user?.wallet_address;
 
-  // Fetch AI agents
-  const { data: agents, isLoading: agentsLoading } = useQuery({
-    queryKey: ["agents"],
-    queryFn: () => {
-      return fetch("https://agents-api.doodles.app/agents")
-        .then((res) => res.json())
-        .then((data) => data);
-    },
-  });
+  // Socket.io: listen for new messages to update chat list in real-time
+  const { onNewMessage } = useChat(undefined, userWallet);
 
   // Fetch user matches
   const { data: matchesData, isLoading: matchesLoading, error: matchesError } = useQuery({
@@ -67,6 +56,14 @@ export default function ChatPage() {
     enabled: !!selectedUserWallet && showProfileModal,
   });
 
+  // Listen for new messages to refresh chat list
+  useEffect(() => {
+    const cleanup = onNewMessage(() => {
+      queryClient.invalidateQueries({ queryKey: ["userChats", userWallet] });
+    });
+    return cleanup;
+  }, [onNewMessage, queryClient, userWallet]);
+
   // Process match data and combine with chat data for last messages
   useEffect(() => {
     if (matchesData?.matches && userChats) {
@@ -82,6 +79,7 @@ export default function ChatPage() {
           wallet_address: match.wallet_address,
           chat_id: match.chat_id,
           timestamp: chatData?.lastMessage?.timestamp,
+          unreadCount: chatData?.unreadCount || 0,
         };
       });
       setMatchedUsers(mappedUsers);
@@ -94,6 +92,7 @@ export default function ChatPage() {
         latestMessage: "Start chatting!",
         wallet_address: match.wallet_address,
         chat_id: match.chat_id,
+        unreadCount: 0,
       }));
       setMatchedUsers(mappedUsers);
     }
@@ -126,7 +125,7 @@ export default function ChatPage() {
   }
 
   // Loading state - wait for all essential data before showing content
-  if (agentsLoading || matchesLoading || chatsLoading) {
+  if (matchesLoading || chatsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-lg">Loading...</div>
@@ -135,9 +134,8 @@ export default function ChatPage() {
   }
 
   // Calculate if we have completed loading
-  const isDataReady = !agentsLoading && !matchesLoading && !chatsLoading;
+  const isDataReady = !matchesLoading && !chatsLoading;
   const hasMatches = matchedUsers.length > 0;
-  const hasAgents = agents?.agents && agents.agents.length > 0;
 
   // Error state
   if (matchesError) {
@@ -205,42 +203,13 @@ export default function ChatPage() {
                         </div>
                         <p className="text-sm text-gray-600 truncate">{matchedUser.latestMessage}</p>
                       </div>
-                      <div className="text-xs text-gray-400">💬</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* AI agents list */}
-            {hasAgents && (
-              <div className="mb-8">
-                <h2 className="text-lg font-semibold mb-4 text-gray-700">AI Assistants</h2>
-                <div className="space-y-4">
-                  {agents.agents.map((agent: Agent) => (
-                    <div
-                      key={agent.id}
-                      className="flex items-center gap-4 p-4 bg-white rounded-lg shadow hover:bg-gray-100 cursor-pointer transition-colors"
-                      onClick={() => router.push(`/chat/${agent.id}`)}
-                    >
-                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-900 font-bold overflow-hidden">
-                        {agent.avatar ? (
-                          <img
-                            src={agent.avatar}
-                            alt={agent.name}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          agent.name.charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {agent.name}
-                        </h3>
-                        <p className="text-sm text-gray-600">Start chatting!</p>
-                      </div>
-                      <div className="text-xs text-gray-400">🤖</div>
+                      {matchedUser.unreadCount > 0 ? (
+                        <div className="bg-primary text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                          {matchedUser.unreadCount > 99 ? '99+' : matchedUser.unreadCount}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-400">💬</div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -248,7 +217,7 @@ export default function ChatPage() {
             )}
 
             {/* Empty state - only show when we're sure there's no data */}
-            {!hasMatches && !hasAgents && (
+            {!hasMatches && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">💔</div>
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">No matches yet</h3>

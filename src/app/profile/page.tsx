@@ -12,6 +12,8 @@ import { getUser, updateUser } from '@/lib/api'
 import axios from 'axios'
 import domtoimage from 'dom-to-image'
 import { useRef } from 'react'
+import { getSocialCounts } from '@/lib/tapestry/social'
+import { updateTapestryProfile } from '@/lib/tapestry/profiles'
 
 const countryOptions = Object.entries(countries).map(([code, country]) => ({
   value: code,
@@ -102,6 +104,7 @@ export default function ProfilePage() {
   const [isProcessingImage, setIsProcessingImage] = useState(false)
   const [isRefreshingAssets, setIsRefreshingAssets] = useState(false)
   const [refreshMessage, setRefreshMessage] = useState<{type: 'success' | 'error', text: string} | null>(null)
+  const [tapestryStats, setTapestryStats] = useState<{ followers: number; following: number } | null>(null)
   const shareRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -134,6 +137,14 @@ export default function ProfilePage() {
           avatar: data.profile?.avatar || data.avatarUrl || '',
         })
         setAvatarPreview(data.profile?.avatar || data.avatarUrl || '')
+
+        // Fetch Tapestry social stats
+        try {
+          const stats = await getSocialCounts(currentUser.wallet.address)
+          setTapestryStats({ followers: stats.followers, following: stats.following })
+        } catch (tapestryError) {
+          console.error('Tapestry stats fetch failed (non-blocking):', tapestryError)
+        }
       } catch (error) {
         console.error('Error fetching user data:', error)
       } finally {
@@ -351,6 +362,16 @@ export default function ProfilePage() {
       const updatedUser = await updateUser(currentUser.wallet.address, patchData)
       setUser(updatedUser)
       setIsEditing(false)
+
+      // Sync profile to Tapestry
+      try {
+        await updateTapestryProfile(currentUser.wallet.address, {
+          username: formData.nickname,
+          bio: formData.bio || undefined,
+        })
+      } catch (tapestryError) {
+        console.error('Tapestry profile sync failed (non-blocking):', tapestryError)
+      }
       
       // Update avatar preview with saved data
       if (updatedUser.profile?.avatar) {
@@ -823,6 +844,29 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Tapestry On-Chain Social Stats */}
+          {tapestryStats && (
+            <div className="bg-white rounded-lg shadow-sm p-6 md:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-gray-900">On-Chain Social</h2>
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Powered by Tapestry</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-primary">{tapestryStats.followers}</div>
+                  <div className="text-sm text-gray-500 mt-1">Followers</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-primary">{tapestryStats.following}</div>
+                  <div className="text-sm text-gray-500 mt-1">Following</div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">Social connections are stored on-chain via Tapestry protocol on Solana</p>
+            </div>
+          )}
 
           {chartData.length > 0 && (
             <div className="bg-white rounded-lg shadow-sm p-6">

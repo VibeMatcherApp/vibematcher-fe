@@ -5,13 +5,25 @@ import { useAuthStore } from "@/store/auth";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 export function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const { ready, authenticated } = usePrivy();
   const { user } = useAuthStore();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Connect Socket.io when authenticated
+  useEffect(() => {
+    const wallet = user?.wallet || user?.wallet_address;
+    if (authenticated && wallet) {
+      connectSocket(wallet);
+    }
+    return () => {
+      disconnectSocket();
+    };
+  }, [authenticated, user]);
 
   if (!ready) return null;
 

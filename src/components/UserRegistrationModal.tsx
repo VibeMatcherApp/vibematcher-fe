@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createUser } from '@/lib/api'
+import { findOrCreateTapestryProfile } from '@/lib/tapestry/profiles'
 
 interface UserRegistrationModalProps {
   isOpen: boolean
@@ -38,6 +39,14 @@ export function UserRegistrationModal({
       }
       
       const newUser = await createUser(userData)
+
+      // Create Tapestry on-chain social profile
+      try {
+        await findOrCreateTapestryProfile(walletAddress, formData.nickname.trim())
+      } catch (tapestryError) {
+        console.error('Tapestry profile creation failed (non-blocking):', tapestryError)
+      }
+
       onSuccess(newUser)
     } catch (error: any) {
       console.error('Error creating user:', error)

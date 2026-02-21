@@ -10,6 +10,7 @@ import { User } from '@/types'
 import TinderCard from 'react-tinder-card'
 import { PieChart } from '@/components/PieChart'
 import { countries } from 'countries-list'
+import { followUser } from '@/lib/tapestry/social'
 
 // Interface definitions for API responses
 interface SwipeHistoryItem {
@@ -331,6 +332,17 @@ export default function DiscoverPage() {
              } finally {
               setIsCreatingChat(false)
             }
+          }
+
+          // Create mutual Tapestry follow on match (on-chain social graph)
+          try {
+            await Promise.all([
+              followUser(currentUserWallet, user.wallet_address),
+              followUser(user.wallet_address, currentUserWallet),
+            ])
+            console.log('Tapestry mutual follow created for match!')
+          } catch (tapestryError) {
+            console.error('Tapestry follow failed (non-blocking):', tapestryError)
           }
 
           // Show enhanced match success modal

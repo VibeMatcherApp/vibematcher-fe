@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { useAuthStore } from '@/store/auth';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getChatMessages, sendMessage, markMessagesAsRead, getUserMatches, getUserProfile } from '@/lib/api';
-import { ChatMessage, ChatMessagesResponse, Match } from '@/types';
-import AgentChatPage from '@/components/chat/agent';
-import { agentIds } from '@/setting';
+import { ChatMessage, Match } from '@/types';
+import { useChat } from '@/hooks/useSocket';
 
 export default function ChatDetailPage() {
   const router = useRouter();
@@ -18,26 +17,27 @@ export default function ChatDetailPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const chatId = params?.chatId as string | undefined;
   const [newMessage, setNewMessage] = useState('');
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [otherUser, setOtherUser] = useState<Match | null>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
   const userWallet = user?.wallet || user?.wallet_address;
   const otherUserWallet = otherUser?.wallet_address;
 
-  // Check if this is an agent chat
-  if (chatId && agentIds.some((e: string) => e === chatId)) {
-    return <AgentChatPage />;
-  }
+  // Socket.io hook for real-time messaging
+  const { isOtherTyping, onNewMessage, sendSocketMessage, emitTyping, emitStopTyping } = useChat(chatId, userWallet);
 
-  // Get chat messages
+  // Get chat messages - reduced polling since we have sockets now
   const { data: chatData, isLoading: messagesLoading, error: messagesError } = useQuery({
     queryKey: ['chatMessages', chatId],
     queryFn: () => getChatMessages(chatId!),
     enabled: !!chatId && !!userWallet,
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time feel
+    refetchInterval: 30000, // Fallback: refresh every 30s (socket handles real-time)
   });
 
   // Get user matches to find other participant info
@@ -64,14 +64,25 @@ export default function ChatDetailPage() {
     }
   }, [matchesData, chatId]);
 
-  // Send message mutation
+  // Listen for real-time messages via Socket.io
+  useEffect(() => {
+    const cleanup = onNewMessage((msg) => {
+      if (msg.chatId === chatId) {
+        // Invalidate query to merge with server data
+        queryClient.invalidateQueries({ queryKey: ['chatMessages', chatId] });
+      }
+    });
+    return cleanup;
+  }, [chatId, onNewMessage, queryClient]);
+
+  // Send message mutation (persists to backend)
   const sendMessageMutation = useMutation({
-    mutationFn: ({ content }: { content: string }) => 
+    mutationFn: ({ content }: { content: string }) =>
       sendMessage(chatId!, content, userWallet!),
     onSuccess: () => {
-      // Refetch messages after sending
       queryClient.invalidateQueries({ queryKey: ['chatMessages', chatId] });
       setNewMessage('');
+      emitStopTyping();
     },
     onError: (error) => {
       console.error('Error sending message:', error);
@@ -85,16 +96,40 @@ export default function ChatDetailPage() {
     }
   }, [chatId, userWallet, chatData?.messages?.length]);
 
-  // Scroll to bottom when new messages arrive
+  // Smart scroll: only auto-scroll if user is near bottom
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const threshold = 100;
+    const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    setIsNearBottom(nearBottom);
+  }, []);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatData?.messages]);
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatData?.messages, isNearBottom]);
+
+  // Handle typing indicator
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    emitTyping();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => emitStopTyping(), 2000);
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || sendMessageMutation.isPending) return;
 
-    sendMessageMutation.mutate({ content: newMessage.trim() });
+    const content = newMessage.trim();
+
+    // Send via Socket.io for instant delivery
+    sendSocketMessage(content);
+
+    // Persist via API
+    sendMessageMutation.mutate({ content });
   };
 
   const handleOpenProfile = () => setShowProfileModal(true);
@@ -168,13 +203,21 @@ export default function ChatDetailPage() {
                   {otherUserNickname}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {messages.length} messages
+                  {isOtherTyping ? (
+                    <span className="text-primary animate-pulse">typing...</span>
+                  ) : (
+                    `${messages.length} messages`
+                  )}
                 </p>
               </div>
             </div>
 
             {/* Messages area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+            >
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
                   <p>No messages yet. Start the conversation!</p>
@@ -190,7 +233,7 @@ export default function ChatDetailPage() {
                     <div
                       className={`max-w-[70%] rounded-lg p-3 ${
                         message.sender === userWallet
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
@@ -200,7 +243,7 @@ export default function ChatDetailPage() {
                           {new Date(message.timestamp).toLocaleTimeString()}
                         </p>
                         {message.sender === userWallet && (
-                          <span className="text-xs opacity-70">
+                          <span className="text-xs opacity-70 ml-2">
                             {message.isRead ? '✓✓' : '✓'}
                           </span>
                         )}
@@ -209,8 +252,32 @@ export default function ChatDetailPage() {
                   </div>
                 ))
               )}
+
+              {/* Typing indicator */}
+              {isOtherTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
+
+            {/* New messages indicator when scrolled up */}
+            {!isNearBottom && (
+              <button
+                onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-primary text-white text-sm px-4 py-2 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+              >
+                New messages ↓
+              </button>
+            )}
 
             {/* Message input */}
             <form onSubmit={handleSendMessage} className="border-t p-4">
@@ -218,15 +285,15 @@ export default function ChatDetailPage() {
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder="Type a message..."
-                  className="flex-1 rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-gray-900"
+                  className="flex-1 rounded-lg border-gray-300 focus:border-primary focus:ring-primary text-gray-900"
                   disabled={sendMessageMutation.isPending}
                 />
                 <button
                   type="submit"
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {sendMessageMutation.isPending ? 'Sending...' : 'Send'}
                 </button>

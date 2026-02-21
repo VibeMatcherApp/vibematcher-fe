@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth'
 import { privyUserToLocalUser } from '@/lib/utils'
 import { updateUserTokens, getUser, createUser } from '@/lib/api'
 import { UserRegistrationModal } from '@/components/UserRegistrationModal'
+import { findOrCreateTapestryProfile } from '@/lib/tapestry/profiles'
 
 export default function Home() {
   const { ready, authenticated, user, login } = usePrivy()
@@ -33,6 +34,16 @@ export default function Home() {
       // User exists, set state and redirect
         setUser(privyUserToLocalUser(user))
         setIsAuthenticated(true)
+
+      // Ensure Tapestry profile exists (idempotent)
+      try {
+        await findOrCreateTapestryProfile(
+          user.wallet.address,
+          userDetails.nickname || 'Anonymous'
+        )
+      } catch (tapestryError) {
+        console.error('Tapestry profile sync failed (non-blocking):', tapestryError)
+      }
       
       // Update tokens
           if (userDetails?.tokenDistribution) {
