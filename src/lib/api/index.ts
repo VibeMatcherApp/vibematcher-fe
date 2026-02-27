@@ -32,25 +32,42 @@ function looksEncrypted(payload: any): boolean {
   }
 }
 
+/**
+ * Recursively strip encrypted objects {_encrypted, data, iv} and replace with
+ * empty string so React never tries to render an object as a child.
+ */
+function stripEncryptedFields(obj: any): any {
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj !== 'object') return obj
+  if (obj._encrypted === true) return ''
+  if (Array.isArray(obj)) return obj.map(stripEncryptedFields)
+  const result: any = {}
+  for (const key of Object.keys(obj)) {
+    result[key] = stripEncryptedFields(obj[key])
+  }
+  return result
+}
+
 function decryptIfNeeded(data: any) {
-  const client = getDecryptionClient()
-  if (!client) return data
   if (!looksEncrypted(data)) return data
 
-  const info = (data as any)._encryption_info
-  if (info && (info.algorithm !== 'AES-256-CBC' || info.version !== '1.0')) {
-    console.warn('Encryption info mismatch, return raw JSON.', info)
-    return data
+  const client = getDecryptionClient()
+
+  // Try decryption if client is available
+  if (client) {
+    try {
+      const decrypted = Array.isArray(data)
+        ? client.decryptUsersArray(data)
+        : client.decryptCompleteUserData(data)
+      return decrypted
+    } catch (e) {
+      console.warn('Decrypt failed, stripping encrypted fields.', e)
+    }
   }
 
-  try {
-    return Array.isArray(data)
-      ? client.decryptUsersArray(data)
-      : client.decryptCompleteUserData(data)
-  } catch (e) {
-    console.error('Decrypt failed. Fallback to raw JSON.', e)
-    return data
-  }
+  // Safety net: strip any remaining {_encrypted, data, iv} objects
+  // so React doesn't crash trying to render them
+  return stripEncryptedFields(data)
 }
 
 const api = axios.create({
