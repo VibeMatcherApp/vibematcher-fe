@@ -76,7 +76,7 @@ api.interceptors.response.use(
     try {
       response.data = decryptIfNeeded(response.data)
     } catch (e) {
-      // 解密失敗不阻擋流程
+      // Decryption failure should not block the flow
       console.error('Decrypt interceptor error:', e)
     }
     return response

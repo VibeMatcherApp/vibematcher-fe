@@ -243,10 +243,10 @@ export default function ProfilePage() {
     setRefreshMessage(null)
     
     try {
-      // 重新获取用户数据，这应该会包含最新的链上资产信息
+      // Re-fetch user data, which should include latest on-chain asset info
       const updatedUser = await getUser(currentUser.wallet.address)
       
-      // 确保API返回了有效的用户数据
+      // Ensure API returned valid user data
       if (updatedUser && updatedUser.wallet_address === currentUser.wallet.address) {
         setUser(updatedUser)
         
@@ -260,7 +260,7 @@ export default function ProfilePage() {
           setRefreshMessage(null)
         }, 3000)
       } else {
-        // 如果返回的数据无效，显示错误
+        // If returned data is invalid, show error
         setRefreshMessage({
           type: 'error',
           text: 'Failed to update assets data. Please try again.'
@@ -294,7 +294,7 @@ export default function ProfilePage() {
       setIsSubmitting(false)
       return
     }
-    // 驗證
+    // Validation
     if (formData.age && (Number(formData.age) < 13 || Number(formData.age) > 120)) {
       setErrorMsg('Age must be between 13 and 120')
       setIsSubmitting(false)
@@ -341,7 +341,7 @@ export default function ProfilePage() {
         return
       }
     }
-    // 組成 PATCH 結構
+    // Build PATCH payload
     const patchData: any = {
       nickname: formData.nickname,
       profile: {

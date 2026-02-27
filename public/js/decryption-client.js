@@ -1,56 +1,56 @@
 /**
- * 前端解密工具類 (客戶端解密版本)
- * ⚠️ 安全升級：現在使用純客戶端解密，避免明文在網路中傳輸
+ * Frontend decryption utility class (client-side decryption version)
+ * Security upgrade: Now uses pure client-side decryption to avoid transmitting plaintext over the network
  */
 class DecryptionClient {
   constructor(appKey = 'your-app-key') {
     this.appKey = appKey;
     this.algorithm = 'AES-256-CBC';
-    this.keyDerivationSalt = 'salt'; // 與後端保持一致
-    
-    // 檢查是否有 crypto-js 可用
+    this.keyDerivationSalt = 'salt'; // Must match backend
+
+    // Check if crypto-js is available
     if (typeof CryptoJS === 'undefined') {
-      console.warn('⚠️ CryptoJS 未載入，請確保在 HTML 中包含 crypto-js 庫：');
+      console.warn('CryptoJS not loaded. Make sure to include the crypto-js library in your HTML:');
       console.warn('<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>');
     }
   }
 
   /**
-   * 客戶端解密單個欄位
-   * @param {Object} encryptedObj - 加密物件 {_encrypted: true, data: "...", iv: "..."}
-   * @returns {string|null} 解密後的字串或 null
+   * Client-side decryption of a single field
+   * @param {Object} encryptedObj - Encrypted object {_encrypted: true, data: "...", iv: "..."}
+   * @returns {string|null} Decrypted string or null
    */
   decryptField(encryptedObj) {
-    // 如果不是加密資料，直接返回
+    // If not encrypted data, return as-is
     if (!encryptedObj || !encryptedObj._encrypted) {
       return encryptedObj;
     }
 
-    // 檢查必要的加密資料
+    // Check required encrypted data
     if (!encryptedObj.data || !encryptedObj.iv) {
-      console.error('❌ 缺少加密資料或 IV');
+      console.error('Missing encrypted data or IV');
       return null;
     }
 
     try {
-      // 檢查 CryptoJS 是否可用
+      // Check if CryptoJS is available
       if (typeof CryptoJS === 'undefined') {
-        throw new Error('CryptoJS 庫未載入');
+        throw new Error('CryptoJS library not loaded');
       }
 
-      // 生成解密金鑰（與後端保持一致：PBKDF2）
-      const key = CryptoJS.PBKDF2(this.appKey, 'salt', { 
+      // Derive decryption key (must match backend: PBKDF2)
+      const key = CryptoJS.PBKDF2(this.appKey, 'salt', {
         keySize: 256/32,
         iterations: 1000,
         hasher: CryptoJS.algo.SHA256
       });
-      
-      // 解析 IV
+
+      // Parse IV
       const iv = CryptoJS.enc.Hex.parse(encryptedObj.iv);
-      
-      // 解密資料 - 修復：正確處理 hex 格式的加密資料
+
+      // Decrypt data - correctly handle hex-encoded encrypted data
       const ciphertext = CryptoJS.enc.Hex.parse(encryptedObj.data);
-      
+
       const decrypted = CryptoJS.AES.decrypt({
         ciphertext: ciphertext
       }, key, {
@@ -58,25 +58,25 @@ class DecryptionClient {
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
       });
-      
+
       const decryptedText = decrypted.toString(CryptoJS.enc.Utf8);
-      
+
       if (!decryptedText) {
-        throw new Error('解密結果為空，可能是金鑰不正確');
+        throw new Error('Decryption result is empty, possibly incorrect key');
       }
-      
-      // 解析 JSON（因為後端用 JSON.stringify 加密）
+
+      // Parse JSON (backend encrypts with JSON.stringify)
       return JSON.parse(decryptedText);
     } catch (error) {
-      console.error('❌ 欄位解密失敗:', error);
+      console.error('Field decryption failed:', error);
       return null;
     }
   }
 
   /**
-   * 解密用戶個人資料
-   * @param {Object} profile - 個人資料物件
-   * @returns {Object} 解密後的個人資料
+   * Decrypt user profile
+   * @param {Object} profile - Profile object
+   * @returns {Object} Decrypted profile
    */
   decryptUserProfile(profile) {
     if (!profile || typeof profile !== 'object') {
@@ -97,9 +97,9 @@ class DecryptionClient {
   }
 
   /**
-   * 解密社交連結
-   * @param {Object} socialLinks - 社交連結物件
-   * @returns {Object} 解密後的社交連結
+   * Decrypt social links
+   * @param {Object} socialLinks - Social links object
+   * @returns {Object} Decrypted social links
    */
   decryptSocialLinks(socialLinks) {
     if (!socialLinks || typeof socialLinks !== 'object') {
@@ -107,7 +107,7 @@ class DecryptionClient {
     }
 
     const decryptedLinks = {};
-    
+
     for (const [platform, link] of Object.entries(socialLinks)) {
       if (link && link._encrypted) {
         const decryptedValue = this.decryptField(link);
@@ -121,9 +121,9 @@ class DecryptionClient {
   }
 
   /**
-   * 解密錢包地址
-   * @param {string|Object} walletAddress - 錢包地址（可能是加密的）
-   * @returns {string} 解密後的錢包地址
+   * Decrypt wallet address
+   * @param {string|Object} walletAddress - Wallet address (may be encrypted)
+   * @returns {string} Decrypted wallet address
    */
   decryptWalletAddress(walletAddress) {
     if (!walletAddress) {
@@ -138,44 +138,44 @@ class DecryptionClient {
   }
 
   /**
-   * 遞歸解密物件中的所有加密欄位
-   * @param {Object} obj - 要解密的物件
-   * @returns {Object} 解密後的物件
+   * Recursively decrypt all encrypted fields in an object
+   * @param {Object} obj - Object to decrypt
+   * @returns {Object} Decrypted object
    */
   decryptResponse(obj) {
     if (!obj || typeof obj !== 'object') {
       return obj;
     }
 
-    // 避免修改原始物件
+    // Avoid modifying the original object
     const decrypted = JSON.parse(JSON.stringify(obj));
-    
-    // 遞歸處理所有屬性
+
+    // Recursively process all properties
     this._decryptRecursive(decrypted);
-    
+
     return decrypted;
   }
 
   /**
-   * 遞歸解密處理（內部方法）
-   * @param {Object} obj - 要處理的物件
+   * Recursive decryption handler (internal method)
+   * @param {Object} obj - Object to process
    * @private
    */
   _decryptRecursive(obj) {
     for (const key in obj) {
       if (obj[key] && typeof obj[key] === 'object') {
         if (obj[key]._encrypted) {
-          // 這是一個加密欄位，解密它
+          // This is an encrypted field, decrypt it
           obj[key] = this.decryptField(obj[key]);
         } else if (Array.isArray(obj[key])) {
-          // 處理陣列
+          // Process array
           obj[key].forEach((item, index) => {
             if (typeof item === 'object') {
               this._decryptRecursive(item);
             }
           });
         } else {
-          // 遞歸處理嵌套物件
+          // Recursively process nested objects
           this._decryptRecursive(obj[key]);
         }
       }
@@ -183,9 +183,9 @@ class DecryptionClient {
   }
 
   /**
-   * 解密完整的用戶資料物件
-   * @param {Object} userData - 用戶資料物件
-   * @returns {Object} 完全解密後的用戶資料
+   * Decrypt complete user data object
+   * @param {Object} userData - User data object
+   * @returns {Object} Fully decrypted user data
    */
   decryptCompleteUserData(userData) {
     if (!userData || typeof userData !== 'object') {
@@ -195,41 +195,41 @@ class DecryptionClient {
     try {
       const decryptedData = { ...userData };
 
-      // 解密暱稱
+      // Decrypt nickname
       if (userData.nickname && userData.nickname._encrypted) {
         decryptedData.nickname = this.decryptField(userData.nickname);
       }
 
-      // 解密錢包地址
+      // Decrypt wallet address
       if (userData.wallet_address) {
         decryptedData.wallet_address = this.decryptWalletAddress(userData.wallet_address);
       }
 
-      // 解密個人資料
+      // Decrypt profile
       if (userData.profile) {
         decryptedData.profile = this.decryptUserProfile(userData.profile);
       }
 
-      // 解密社交連結
+      // Decrypt social links
       if (userData.social_links) {
         decryptedData.social_links = this.decryptSocialLinks(userData.social_links);
       }
 
-      // 移除加密資訊欄位（不再需要）
+      // Remove encryption info field (no longer needed)
       delete decryptedData._encryption_info;
 
-      console.log('✅ 用戶資料解密完成（客戶端）');
+      console.log('User data decrypted (client-side)');
       return decryptedData;
     } catch (error) {
-      console.error('❌ 用戶資料解密失敗:', error);
-      return userData; // 返回原始資料
+      console.error('User data decryption failed:', error);
+      return userData; // Return original data
     }
   }
 
   /**
-   * 解密陣列中的多個用戶資料
-   * @param {Array} usersArray - 用戶資料陣列
-   * @returns {Array} 解密後的用戶資料陣列
+   * Decrypt multiple user data objects in an array
+   * @param {Array} usersArray - Array of user data objects
+   * @returns {Array} Array of decrypted user data
    */
   decryptUsersArray(usersArray) {
     if (!Array.isArray(usersArray)) {
@@ -240,9 +240,9 @@ class DecryptionClient {
   }
 
   /**
-   * 檢查是否有加密欄位需要解密
-   * @param {Object} obj - 要檢查的物件
-   * @returns {boolean} 是否包含加密欄位
+   * Check if an object has encrypted fields that need decryption
+   * @param {Object} obj - Object to check
+   * @returns {boolean} Whether it contains encrypted fields
    */
   hasEncryptedFields(obj) {
     if (!obj || typeof obj !== 'object') {
@@ -261,15 +261,15 @@ class DecryptionClient {
   }
 
   /**
-   * 獲取支援的加密欄位列表
-   * @returns {Array} 支援的加密欄位
+   * Get list of supported encrypted fields
+   * @returns {Array} Supported encrypted fields
    */
   getSupportedFields() {
     return [
       'nickname',
       'profile.age',
       'profile.gender',
-      'profile.region', 
+      'profile.region',
       'profile.bio',
       'profile.avatar',
       'social_links.*',
@@ -278,70 +278,70 @@ class DecryptionClient {
   }
 
   /**
-   * 設定應用程式金鑰
-   * @param {string} appKey - 新的應用程式金鑰
+   * Set application key
+   * @param {string} appKey - New application key
    */
   setAppKey(appKey) {
     this.appKey = appKey;
-    console.log('🔧 應用程式金鑰已更新');
+    console.log('Application key updated');
   }
 }
 
-// 使用範例：
+// Usage example:
 /*
-// 1. 載入 crypto-js 庫（在 HTML 中）
+// 1. Load crypto-js library (in HTML)
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
-// 2. 創建解密客戶端
+// 2. Create decryption client
 const decryptionClient = new DecryptionClient('your-app-key');
 
-// 3. 獲取並解密用戶資料
+// 3. Fetch and decrypt user data
 async function loadUserProfile(walletAddress) {
   try {
-    // 從 API 獲取加密的用戶資料
+    // Fetch encrypted user data from API
     const response = await fetch(`/api/users/${walletAddress}/profile`);
     const encryptedUserData = await response.json();
-    
-    // 客戶端解密（不會發送任何網路請求）
+
+    // Client-side decryption (no network requests sent)
     const decryptedUserData = decryptionClient.decryptCompleteUserData(encryptedUserData);
-    
-    console.log('解密後的用戶資料:', decryptedUserData);
+
+    console.log('Decrypted user data:', decryptedUserData);
     return decryptedUserData;
   } catch (error) {
-    console.error('載入用戶資料失敗:', error);
+    console.error('Failed to load user data:', error);
   }
 }
 
-// 4. 解密用戶列表
+// 4. Decrypt user list
 async function loadUsersList() {
   try {
     const response = await fetch('/api/users');
     const encryptedUsers = await response.json();
-    
-    // 解密整個用戶陣列
+
+    // Decrypt entire users array
     const decryptedUsers = decryptionClient.decryptUsersArray(encryptedUsers);
-    
-    console.log('解密後的用戶列表:', decryptedUsers);
+
+    console.log('Decrypted user list:', decryptedUsers);
     return decryptedUsers;
   } catch (error) {
-    console.error('載入用戶列表失敗:', error);
+    console.error('Failed to load user list:', error);
   }
 }
 
-// 5. 檢查是否需要解密
+// 5. Check if decryption is needed
 const userData = await fetch('/api/users/wallet123').then(r => r.json());
 if (decryptionClient.hasEncryptedFields(userData)) {
-  console.log('資料包含加密欄位，需要解密');
+  console.log('Data contains encrypted fields, decryption needed');
   const decrypted = decryptionClient.decryptCompleteUserData(userData);
 }
 */
 
-// 如果是在 Node.js 環境中使用
+// For Node.js environments
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = DecryptionClient;
 }
 
-// 如果是在瀏覽器環境中使用
+// For browser environments
 if (typeof window !== 'undefined') {
   window.DecryptionClient = DecryptionClient;
-} 
+}

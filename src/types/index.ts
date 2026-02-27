@@ -8,7 +8,7 @@ export interface MatchedUser {
   _id?: string; // Add _id property for compatibility
 }
 
-// 添加配對API響應的類型定義
+// Match API response type definitions
 export interface Match {
   wallet_address: string;
   matched_at: string;
@@ -21,7 +21,7 @@ export interface Match {
       age?: number;
       bio?: string;
     };
-    [key: string]: any; // 允許其他額外字段
+    [key: string]: any; // Allow extra fields
   };
 }
 
@@ -110,7 +110,7 @@ export interface User {
   avatarUrl?: string // Add avatarUrl property to User type
   friends?: MatchedUser[]; // Ensure compatibility with API response
   matchPercentage?: number;
-  // 新增
+  // Extended fields
   profile?: UserProfile;
   social_links?: UserSocialLinks;
   // Loading and error states

@@ -24,7 +24,7 @@ export function Sidebar({ onToggle }: SidebarProps) {
 
   return (
     <>
-      {/* 网页端侧边栏 */}
+      {/* Desktop sidebar */}
       {isVisible && (
         <div className="hidden md:block fixed left-0 top-0 h-screen w-64 bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out translate-x-0">
           <div className="flex flex-col h-full">
@@ -92,7 +92,7 @@ export function Sidebar({ onToggle }: SidebarProps) {
         </button>
       )}
 
-      {/* 移动端底部导航 */}
+      {/* Mobile bottom navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
         <nav className="flex justify-around items-center h-16">
           {menuItems.map((item) => (

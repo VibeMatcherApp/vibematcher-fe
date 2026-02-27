@@ -96,8 +96,8 @@ export default function Home() {
     )
   }
 
-  // If authenticated and not showing registration modal, return null (prevent flickering)
-  if (ready && authenticated && !showRegistrationModal) return null
+  // If authenticated and no error/modal, return null (prevent flickering during redirect)
+  if (ready && authenticated && !showRegistrationModal && !registrationError) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
